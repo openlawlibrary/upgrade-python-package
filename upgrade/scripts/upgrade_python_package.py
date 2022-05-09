@@ -11,15 +11,7 @@ import site
 
 constraints_file_path = ''
 
-def set_wheels_path(wheels_path):
-    '''
-    If the wheels_path is not set, set it to the default.
-    '''
-    if wheels_path:
-        wheels_path = wheels_path
-    else:
-        wheels_path = '/vagrant/wheels'
-    return wheels_path
+DIST_INFO_RE_FORMAT = r'^{package_name}-.+\.dist-info$'
 
 def set_wheels_list(wheels_path):
     '''
@@ -58,7 +50,7 @@ def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *arg
         module_name = package_name.replace('-', '_')
         try_running_module(module_name, *args)
 
-def get_constraints_file_path(site_packages_dir=None):
+def get_constraints_file_path(wheel_path, site_packages_dir=None):
     '''
     Find the path to the constraints file from site-packages.
     '''
@@ -68,15 +60,6 @@ def get_constraints_file_path(site_packages_dir=None):
     if constraints_file_path:
         return str(constraints_file_path)
 
-    data_files_dir_names = (
-        'oll_partners',
-        'oll_draft',
-        'oll_cls',
-        'oll_draft_server',
-        'oll_partners_us_dc',
-        'oll_portal',
-        'oll_publish_server',
-    )
     # get site-packages dir of current venv
     try:
         import oll
@@ -87,9 +70,15 @@ def get_constraints_file_path(site_packages_dir=None):
         if constraints_file_path.exists():
             return str(constraints_file_path)
         raise ImportError
-    except ImportError:
+    except (ImportError, AttributeError):
+        import pdb; pdb.set_trace()
         site_packages_dir = Path(site_packages_dir) if site_packages_dir else Path(site.getsitepackages()[1])
-        for data_files_dir_name in data_files_dir_names:
+        wheel_full_name = Path(wheel_path).name
+        package_name = wheel_full_name.split('-', 1)[0]
+        dist_info_template = DIST_INFO_RE_FORMAT.format(package_name=package_name)
+        dist_info_dir_re = re.compile(dist_info_template)
+        res = [f for f in glob.glob('*.dist-info') if dist_info_dir_re.match(f)]
+        for data_files_dir_name in res:
             # get the path to the data_files_dir_name
             data_files_dir = site_packages_dir / data_files_dir_name
             # get constraints file path 
@@ -121,14 +110,15 @@ def install_wheel(wheel_path, cloudsmith_key=None):
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
     """
-    wheel_path = str(wheel_path)
-    # success_message = 'No broken requirements found.'
+    # wheel_path = str(wheel_path)
+    # # success_message = 'No broken requirements found.'
     pip('install', '--no-deps', wheel_path)
     try:
         pip('check')
     except:
         # try to install with constraints
-        constraints_file_path = get_constraints_file_path()
+        import pdb; pdb.set_trace()
+        constraints_file_path = get_constraints_file_path(wheel_path)
         if constraints_file_path:
             install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key)
 
@@ -151,6 +141,7 @@ def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_pat
 def upgrade_from_local_wheel(package_install_cmd, skip_post_install, *args, cloudsmith_key=None, wheels_path = None):
     package_name, extra = split_package_name_and_extra(package_install_cmd)
     try:
+        import pdb; pdb.set_trace()
         wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
     except IndexError:
         print(f'Wheel {package_name} not found')
@@ -333,22 +324,24 @@ parser.add_argument('vars', nargs='*',
                          'specified package. If no arguments are provided, it is checked if there ' +
                          'are environment variables which store the needed values.' +
                          'These variables should be named "UPDATE_PACKAGE_NAME"')
+parser.add_argument('--log-location', help='Specifies where to store the log file')
 if __name__ == '__main__':
-    args = parser.parse_args()
-    # if args.test:
-    #     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
-    # else:
-    #     logging.basicConfig(filename='/var/log/upgrade_python_package.log',
-    #                         level=logging.WARNING,
-    #                         format='%(asctime)s %(message)s')
-    wheels_path = set_wheels_path(args.wheels_path)
-    if args.update_from_local_wheels:
-        if args.package:
-            upgrade_from_local_wheel(args.package, args.skip_post_install, wheels_path, *args.vars)
-        else:
-            upgrade_from_local_wheels(args.skip_post_install, args.cloudsmith_key, wheels_path)
-    elif args.run_initial_post_install:
-        run_initial_post_install(args.package, *args.vars)
+    parsed_args = parser.parse_args()
+    if parsed_args.test:
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
     else:
-        upgrade_and_run(args.package, args.force, args.skip_post_install,
-                        args.version, *args.vars)
+        log_location = parsed_args.log_location or '/var/log/upgrade_python_package.log'
+        logging.basicConfig(filename=log_location,
+                            level=logging.WARNING,
+                            format='%(asctime)s %(message)s')
+    wheels_path = parsed_args.wheels_path or '/vagrant/wheels'
+    if parsed_args.update_from_local_wheels:
+        if parsed_args.package:
+            upgrade_from_local_wheel(parsed_args.package, parsed_args.skip_post_install, wheels_path=wheels_path, *parsed_args.vars)
+        else:
+            upgrade_from_local_wheels(parsed_args.skip_post_install, parsed_args.cloudsmith_key, wheels_path=wheels_path)
+    elif parsed_args.run_initial_post_install:
+        run_initial_post_install(parsed_args.package, *parsed_args.vars)
+    else:
+        upgrade_and_run(parsed_args.package, parsed_args.force, parsed_args.skip_post_install,
+                        parsed_args.version, *parsed_args.vars)
