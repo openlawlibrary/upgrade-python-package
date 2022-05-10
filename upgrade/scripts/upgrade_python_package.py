@@ -50,7 +50,7 @@ def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *arg
         module_name = package_name.replace('-', '_')
         try_running_module(module_name, *args)
 
-def get_constraints_file_path(wheel_path, site_packages_dir=None):
+def get_constraints_file_path(package_name, site_packages_dir=None):
     '''
     Find the path to the constraints file from site-packages.
     '''
@@ -72,8 +72,7 @@ def get_constraints_file_path(wheel_path, site_packages_dir=None):
         raise ImportError
     except (ImportError, AttributeError):
         site_packages_dir = Path(site_packages_dir) if site_packages_dir else Path(site.getsitepackages()[1])
-        wheel_full_name = Path(wheel_path).name
-        package_name = wheel_full_name.split('-', 1)[0]
+        package_name = package_name.replace('-', '_')
         dist_info_template = DIST_INFO_RE_FORMAT.format(package_name=package_name)
         dist_info_dir_re = re.compile(dist_info_template)
         res = [f for f in os.listdir(site_packages_dir) if dist_info_dir_re.match(f)]
@@ -89,7 +88,7 @@ def get_constraints_file_path(wheel_path, site_packages_dir=None):
                 
     return None
 
-def install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key=None):
+def install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key=None, local=False, wheels_dir=None):
     """
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
     """
@@ -97,32 +96,50 @@ def install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key=N
         logging.info('Installing wheel with constraints %s', wheel_path)
         if cloudsmith_key:
             pip('install',wheel_path ,'-c', constraints_file_path, "--extra-index-url", "https://pypi.python.org/simple/", "--index-url" , f"https://dl.cloudsmith.io/{cloudsmith_key}/openlawlibrary/development/python/index/")
+        elif local:
+            pip('install', wheel_path, '-c', constraints_file_path, '--find-links', wheels_dir)
         else:
             pip('install', wheel_path, '-c', constraints_file_path)
-        
     else:
         # install without constraints for backwards compatibility
         logging.info('No constraints.txt found. Installing wheel %s without constraints.txt', wheel_path)
-        pip('install', wheel_path)
+        if local:
+            pip('install', wheel_path, '--find-links', wheels_dir)
+        else:
+            pip('install', wheel_path)
 
-def install_wheel(wheel_path, cloudsmith_key=None):
+
+def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=None):
     """
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
     """
     # wheel_path = str(wheel_path)
     # success_message = 'No broken requirements found.'
-    pip('install', '--no-deps', wheel_path)
+    if local:
+        package_name, extra = split_package_name_and_extra(package_name)
+        try:
+            wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
+        except IndexError:
+            print(f'Wheel {package_name} not found')
+            return
+        pip('install', '--no-deps', wheel + extra)
+    else:
+        pip('install', '--no-deps', package_name)
     try:
         pip('check')
     except:
         # try to install with constraints
-        constraints_file_path = get_constraints_file_path(wheel_path)
+        constraints_file_path = get_constraints_file_path(package_name)
         if constraints_file_path:
-            install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key)
+            install_with_constraints(package_name, constraints_file_path, cloudsmith_key, local, wheels_path)
 
 
 def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_path=None):
+    # TODO this needs to be updated so that instead of the wheel, we pass package to install_wheel
+    # or better yet, remove this and rework the tests to install all packages using update_from_local_wheel
+    # which uses --find-links
+    # oll-core logic has to be removed from set_wheels_list
     wheels = set_wheels_list(wheels_path)
     installed_wheels = []
     for wheel in wheels:
@@ -130,7 +147,7 @@ def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_pat
         if not cloudsmith_key: # if cloudsmith_key is not set, then it is not working on local machine.
             if 'not installed' in resp:
                 continue
-        install_wheel(wheel, cloudsmith_key)
+        install_wheel(wheel, cloudsmith_key, local=True, wheels_path=wheels_path)
         installed_wheels.append(wheel)
     if not skip_post_install:
         for wheel in installed_wheels:
@@ -138,17 +155,12 @@ def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_pat
 
 
 def upgrade_from_local_wheel(package_install_cmd, skip_post_install, *args, cloudsmith_key=None, wheels_path = None):
-    package_name, extra = split_package_name_and_extra(package_install_cmd)
-    try:
-        wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
-    except IndexError:
-        print(f'Wheel {package_name} not found')
-        return
-    pip('uninstall', '-y', wheel)
-    logging.info('Installing wheel %s', wheel + extra)
-    install_wheel(wheel + extra, cloudsmith_key)
+    package_name, _ = split_package_name_and_extra(package_install_cmd)
+    pip('uninstall', '-y', package_name)
+    install_wheel(package_install_cmd, cloudsmith_key, local=True, wheels_path=wheels_path)
     if not skip_post_install:
-        try_running_module(wheel,  *args)
+        module_name = package_name.replace('-', '_')
+        try_running_module(module_name,  *args)
 
 
 development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
