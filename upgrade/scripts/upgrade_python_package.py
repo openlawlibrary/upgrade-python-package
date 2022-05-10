@@ -71,18 +71,18 @@ def get_constraints_file_path(wheel_path, site_packages_dir=None):
             return str(constraints_file_path)
         raise ImportError
     except (ImportError, AttributeError):
-        import pdb; pdb.set_trace()
         site_packages_dir = Path(site_packages_dir) if site_packages_dir else Path(site.getsitepackages()[1])
         wheel_full_name = Path(wheel_path).name
         package_name = wheel_full_name.split('-', 1)[0]
         dist_info_template = DIST_INFO_RE_FORMAT.format(package_name=package_name)
         dist_info_dir_re = re.compile(dist_info_template)
-        res = [f for f in glob.glob('*.dist-info') if dist_info_dir_re.match(f)]
+        res = [f for f in os.listdir(site_packages_dir) if dist_info_dir_re.match(f)]
         for data_files_dir_name in res:
             # get the path to the data_files_dir_name
             data_files_dir = site_packages_dir / data_files_dir_name
+            top_level = (data_files_dir / 'top_level.txt').read_text().strip()
             # get constraints file path 
-            constraints_file_path = data_files_dir / 'constraints.txt'
+            constraints_file_path = site_packages_dir / top_level / 'constraints.txt'
             # check if constraints file exists
             if os.path.exists(constraints_file_path):
                 return str(constraints_file_path)
@@ -111,13 +111,12 @@ def install_wheel(wheel_path, cloudsmith_key=None):
     If there are broken dependencies, try to install it with constraints.
     """
     # wheel_path = str(wheel_path)
-    # # success_message = 'No broken requirements found.'
+    # success_message = 'No broken requirements found.'
     pip('install', '--no-deps', wheel_path)
     try:
         pip('check')
     except:
         # try to install with constraints
-        import pdb; pdb.set_trace()
         constraints_file_path = get_constraints_file_path(wheel_path)
         if constraints_file_path:
             install_with_constraints(wheel_path, constraints_file_path, cloudsmith_key)
@@ -141,7 +140,6 @@ def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_pat
 def upgrade_from_local_wheel(package_install_cmd, skip_post_install, *args, cloudsmith_key=None, wheels_path = None):
     package_name, extra = split_package_name_and_extra(package_install_cmd)
     try:
-        import pdb; pdb.set_trace()
         wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
     except IndexError:
         print(f'Wheel {package_name} not found')
@@ -337,9 +335,16 @@ if __name__ == '__main__':
     wheels_path = parsed_args.wheels_path or '/vagrant/wheels'
     if parsed_args.update_from_local_wheels:
         if parsed_args.package:
-            upgrade_from_local_wheel(parsed_args.package, parsed_args.skip_post_install, wheels_path=wheels_path, *parsed_args.vars)
+            upgrade_from_local_wheel(
+                parsed_args.package, parsed_args.skip_post_install,
+                wheels_path=wheels_path, cloudsmith_key=parsed_args.cloudsmith_key,
+                *parsed_args.vars)
         else:
-            upgrade_from_local_wheels(parsed_args.skip_post_install, parsed_args.cloudsmith_key, wheels_path=wheels_path)
+            upgrade_from_local_wheels(
+                parsed_args.skip_post_install,
+                cloudsmith_key=parsed_args.cloudsmith_key,
+                wheels_path=wheels_path
+            )
     elif parsed_args.run_initial_post_install:
         run_initial_post_install(parsed_args.package, *parsed_args.vars)
     else:
