@@ -13,20 +13,6 @@ constraints_file_path = ''
 
 DIST_INFO_RE_FORMAT = r'^{package_name}-.+\.dist-info$'
 
-def set_wheels_list(wheels_path):
-    '''
-    Set the list of wheels to upgrade. Try to put oll_core first in the list so that it can be installed first before any other package.
-    '''
-    wheels = glob.glob(f'{wheels_path}/*.whl')
-
-    # get oll_core-2.6.0.dev11-11-py3-none-any.whl index in wheels
-    for wheel_path in wheels:
-        is_oll_core = 'oll_core' in wheel_path
-        if is_oll_core:
-            wheels.remove(wheel_path)
-            wheels.insert(0, wheel_path)
-            break
-    return wheels
 
 def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *args):
     """
@@ -49,6 +35,7 @@ def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *arg
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace('-', '_')
         try_running_module(module_name, *args)
+
 
 def get_constraints_file_path(package_name, site_packages_dir=None):
     '''
@@ -114,8 +101,6 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
     """
-    # wheel_path = str(wheel_path)
-    # success_message = 'No broken requirements found.'
     if local:
         package_name, extra = split_package_name_and_extra(package_name)
         try:
@@ -133,25 +118,6 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
         constraints_file_path = get_constraints_file_path(package_name)
         if constraints_file_path:
             install_with_constraints(package_name, constraints_file_path, cloudsmith_key, local, wheels_path)
-
-
-def upgrade_from_local_wheels(skip_post_install, cloudsmith_key=None, wheels_path=None):
-    # TODO this needs to be updated so that instead of the wheel, we pass package to install_wheel
-    # or better yet, remove this and rework the tests to install all packages using update_from_local_wheel
-    # which uses --find-links
-    # oll-core logic has to be removed from set_wheels_list
-    wheels = set_wheels_list(wheels_path)
-    installed_wheels = []
-    for wheel in wheels:
-        resp = pip('uninstall', '-y', wheel)
-        if not cloudsmith_key: # if cloudsmith_key is not set, then it is not working on local machine.
-            if 'not installed' in resp:
-                continue
-        install_wheel(wheel, cloudsmith_key, local=True, wheels_path=wheels_path)
-        installed_wheels.append(wheel)
-    if not skip_post_install:
-        for wheel in installed_wheels:
-            try_running_module(wheel)
 
 
 def upgrade_from_local_wheel(package_install_cmd, skip_post_install, *args, cloudsmith_key=None, wheels_path = None):
@@ -351,12 +317,6 @@ if __name__ == '__main__':
                 parsed_args.package, parsed_args.skip_post_install,
                 wheels_path=wheels_path, cloudsmith_key=parsed_args.cloudsmith_key,
                 *parsed_args.vars)
-        else:
-            upgrade_from_local_wheels(
-                parsed_args.skip_post_install,
-                cloudsmith_key=parsed_args.cloudsmith_key,
-                wheels_path=wheels_path
-            )
     elif parsed_args.run_initial_post_install:
         run_initial_post_install(parsed_args.package, *parsed_args.vars)
     else:
