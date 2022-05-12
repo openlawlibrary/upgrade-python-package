@@ -61,7 +61,7 @@ if __name__ == "__main__":
     version = parsed_args.version
     this_dir = Path(__file__).absolute().parent
     projects_dir = this_dir / "data"
-    wheels_path = this_dir / "wheels"
+    wheels_path = this_dir / "repository"
     wheels_path.mkdir(parents=True, exist_ok=True)
     for path in projects_dir.iterdir():
         if version:
