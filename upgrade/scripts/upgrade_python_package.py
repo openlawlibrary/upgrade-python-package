@@ -73,7 +73,7 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
         for data_files_dir_name in res:
             # get the path to the data_files_dir_name
             data_files_dir = site_packages_dir / data_files_dir_name
-            top_level = (data_files_dir / "top_level.txt").read_text().strip()
+            top_level = (data_files_dir / "top_level.txt").read_text().splitlines()[0]
             # get constraints file path
             constraints_file_path = site_packages_dir / top_level / "constraints.txt"
             # check if constraints file exists
@@ -136,7 +136,7 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
             wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
         except IndexError:
             print(f"Wheel {package_name} not found")
-            return
+            raise
         pip("install", "--no-deps", wheel + extra)
     else:
         pip("install", "--no-deps", package_name)
@@ -145,10 +145,9 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
     except:
         # try to install with constraints
         constraints_file_path = get_constraints_file_path(package_name)
-        if constraints_file_path:
-            install_with_constraints(
-                package_name, constraints_file_path, cloudsmith_key, local, wheels_path
-            )
+        install_with_constraints(
+            package_name, constraints_file_path, cloudsmith_key, local, wheels_path
+        )
 
 
 def upgrade_from_local_wheel(
@@ -156,9 +155,12 @@ def upgrade_from_local_wheel(
 ):
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     pip("uninstall", "-y", package_name)
-    install_wheel(
-        package_install_cmd, cloudsmith_key, local=True, wheels_path=wheels_path
-    )
+    try:
+        install_wheel(
+            package_install_cmd, cloudsmith_key, local=True, wheels_path=wheels_path
+        )
+    except Exception:
+        raise
     if not skip_post_install:
         module_name = package_name.replace("-", "_")
         try_running_module(module_name, *args)
