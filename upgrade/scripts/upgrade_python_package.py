@@ -162,7 +162,7 @@ def upgrade_from_local_wheel(
     except Exception:
         raise
     if not skip_post_install:
-        module_name = package_name.replace("-", "_")
+        module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
 
 
