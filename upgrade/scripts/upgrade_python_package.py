@@ -133,7 +133,7 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
     if local:
         package_name, extra = split_package_name_and_extra(package_name)
         try:
-            wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_")}*.whl')[0]
+            wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl')[0]
         except IndexError:
             print(f"Wheel {package_name} not found")
             raise
