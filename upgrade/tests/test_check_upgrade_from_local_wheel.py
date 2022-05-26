@@ -32,7 +32,6 @@ def test_upgrade_local_wheel_top_level_package_where_package_name_is_valid_expec
     wheels_dir, use_pip
 ):
     package = "oll-test-top-level"
-
     cut = upgrade_from_local_wheel
     cut(
         package,
@@ -46,16 +45,15 @@ def test_upgrade_local_wheel_top_level_package_where_package_name_is_valid_expec
         shell=True,
     ).splitlines()
 
+    expected_packages = {
+        "oll-test-top-level==2.0.0",
+        "oll-dependency1==2.0.0",
+        "oll-dependency2==2.0.0",
+    }
+    actual_packages = set(dependencies_from_venv)
+
     expected = True
-    actual = any(
-        dependency
-        in [
-            "oll-test-top-level==2.0.0",
-            "oll-dependency1==2.0.0",
-            "oll-dependency2==2.0.0",
-        ]
-        for dependency in dependencies_from_venv
-    )
+    actual = expected_packages.issubset(actual_packages)
     assert actual == expected
 
 
@@ -76,16 +74,15 @@ def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid
         shell=True,
     ).splitlines()
 
+    expected_packages = {
+        "oll-test-top-level==2.0.0",
+        "oll-dependency1==2.0.0",
+        "oll-dependency2==2.0.0",
+    }
+    actual_packages = set(dependencies_from_venv)
+
     expected = True
-    actual = any(
-        dependency
-        in [
-            "oll-test-top-level==2.0.0",
-            "oll-dependency1==2.0.0",
-            "oll-dependency2==2.0.0",
-        ]
-        for dependency in dependencies_from_venv
-    )
+    actual = expected_packages.issubset(actual_packages)
     assert actual == expected
 
 
@@ -114,32 +111,32 @@ def test_upgrade_local_wheel_top_level_package_from_2_0_0_to_2_0_1_expect_newer_
         shell=True,
     ).splitlines()
 
+    expected_packages = {
+        "oll-test-top-level==2.0.1",
+        "oll-dependency1==2.0.1",
+        "oll-dependency2==2.0.1",
+    }
+    actual_packages = set(dependencies_from_venv)
+
     expected = True
-    actual = any(
-        dependency
-        in [
-            "oll-test-top-level==2.0.1",
-            "oll-dependency1==2.0.1",
-            "oll-dependency2==2.0.1",
-        ]
-        for dependency in dependencies_from_venv
-    )
+    actual = expected_packages.issubset(actual_packages)
     assert actual == expected
 
 
 def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_exist_expect_package_install_fail(
-    wheels_dir,
+    wheels_dir, capsys
 ):
     package = "oll-test-top-level==1.0.0"
 
     cut = upgrade_from_local_wheel
-    with pytest.raises(IndexError) as error:
+    with pytest.raises(IndexError):
         cut(
             package,
             skip_post_install=True,
             wheels_path=str(wheels_dir),
         )
+    out, _ = capsys.readouterr()
 
-    expected = "list index out of range"
-    actual = str(error).split("IndexError(")[1].split(",")[0].replace("'", "")
-    assert actual == expected
+    expected = "Wheel oll-test-top-level==1.0.0 not found"
+    actual = out
+    assert expected in actual
