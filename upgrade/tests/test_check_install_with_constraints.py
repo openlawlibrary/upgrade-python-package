@@ -19,7 +19,8 @@ def test_install_top_level_package_2_0_1_with_constraints_expect_success(
     install_local_package(full_package_name, no_deps=True)
 
     package = f'oll-test-top-level=={version}'
-    install_with_constraints(
+    cut = install_with_constraints
+    cut(
         wheel_path=package,
         constraints_file_path=constraints_path,
         local=True,
@@ -48,8 +49,9 @@ def test_install_top_level_package_2_0_2_without_constraints_where_dependencies_
     wheels_dir, capsys
 ):
     package = "oll-test-top-level==2.0.2"
+    cut = install_with_constraints
     with pytest.raises(subprocess.CalledProcessError):
-        install_with_constraints(
+        cut(
             wheel_path=package,
             constraints_file_path=None,
             local=True,
