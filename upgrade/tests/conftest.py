@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import pytest
+from mock import patch
 from pathlib import Path
 from upgrade.scripts.upgrade_python_package import pip, run
 
@@ -40,8 +41,24 @@ def use_pip():
     pip("uninstall", "-y", "oll-dependency2")
 
 
-def install_local_package(dependency):
+@pytest.fixture
+def constraints_path():
+    return str(VENV_PATH / "lib" / "site-packages" / "oll" / "constraints.txt")
+
+
+@pytest.fixture()
+def mocked_constraints_path():
+    with patch(
+        "upgrade.scripts.upgrade_python_package.get_constraints_file_path",
+        return_value=None,
+    ):
+        yield
+
+
+def install_local_package(dependency, no_deps=None):
     full_dep_path = str(REPOSITORY_WHEELS_PATH / dependency)
     links_path = str(REPOSITORY_WHEELS_PATH)
-
-    pip("install", full_dep_path, "--find-links", links_path)
+    if no_deps is None:
+        pip("install", full_dep_path, "--find-links", links_path)
+    else:
+        pip("install", full_dep_path, "--find-links", links_path, "--no-deps")
