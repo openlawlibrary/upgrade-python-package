@@ -16,17 +16,43 @@ def test_try_running_module_expect_success_and_print(capsys):
     assert expected in actual
 
 
-def test_try_running_module_where_wrong_package_is_installed_expect_error_in_print(
-    capsys,
-):
+def test_try_running_module_where_module_name_is_a_wrong_directory_expect_error(capsys):
+    full_package_name = "oll_test_top_level-2.0.0-py2.py3-none-any.whl"
+    install_local_package(full_package_name)
+
+    module_name = "oll"
+    cut = try_running_module
+    cut(module_name)
+
+    out, _ = capsys.readouterr()
+    expected = "No module named oll"
+    actual = out
+    assert expected in actual
+
+
+def test_try_running_module_where_package_is_not_a_module_expect_error(capsys):
+    full_package_name = "oll_dependency1-2.0.1-py2.py3-none-any.whl"
+    install_local_package(full_package_name)
+
+    module_name = "dependency1"
+    cut = try_running_module
+    cut(module_name)
+
+    out, _ = capsys.readouterr()
+    expected = "No module named dependency1"
+    actual = out
+    assert expected in actual
+
+
+def test_try_running_module_where_another_package_is_not_a_module_expect_error(capsys):
     full_package_name = "oll_dependency2-2.0.1-py2.py3-none-any.whl"
     install_local_package(full_package_name)
 
-    module_name = "oll_dependency2"
+    module_name = "oll"
     cut = try_running_module
     cut(module_name)
-    out, _ = capsys.readouterr()
 
-    expected = "Hello dependency 2"
+    out, _ = capsys.readouterr()
+    expected = "No module named oll"
     actual = out
-    assert expected not in actual
+    assert expected in actual
