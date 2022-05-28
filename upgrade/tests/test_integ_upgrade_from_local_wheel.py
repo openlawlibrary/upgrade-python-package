@@ -2,7 +2,7 @@ from upgrade.scripts.upgrade_python_package import upgrade_from_local_wheel
 
 
 def test_upgrade_local_wheels_top_level_package_from_2_0_0_to_2_0_1_expect_success(
-    wheels_dir, use_pip, capfd, mocked_constraints_path
+    wheels_dir, use_pip, capfd, mocked_constraints_path, mock_find_spec
 ):
     package = "oll-test-top-level==2.0.0"
     upgrade_from_local_wheel(

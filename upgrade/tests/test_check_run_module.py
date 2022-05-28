@@ -1,16 +1,16 @@
+from mock import patch
 from upgrade.scripts.upgrade_python_package import try_running_module
 from .conftest import install_local_package
 
 
-def test_try_running_module_expect_success_and_print(capsys):
+def test_try_running_module_expect_success_and_print(capsys, mock_find_spec):
     full_package_name = "oll_test_top_level-2.0.1-py2.py3-none-any.whl"
     install_local_package(full_package_name)
-
+    out, _ = capsys.readouterr()
     module_name = "oll_test_top_level"
     cut = try_running_module
     cut(module_name)
     out, _ = capsys.readouterr()
-
     expected = "Hello from main"
     actual = out
     assert expected in actual

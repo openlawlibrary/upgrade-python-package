@@ -55,6 +55,13 @@ def mocked_constraints_path():
         yield
 
 
+@pytest.fixture()
+def mock_find_spec():
+    from importlib import util
+
+    util.find_spec = lambda name, package=None: True
+
+
 def install_local_package(dependency, no_deps=None):
     full_dep_path = str(REPOSITORY_WHEELS_PATH / dependency)
     links_path = str(REPOSITORY_WHEELS_PATH)
