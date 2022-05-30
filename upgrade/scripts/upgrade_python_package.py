@@ -154,7 +154,7 @@ def install_with_constraints(
                 pip("install", wheel_path, "--find-links", wheels_dir)
             else:
                 pip("install", wheel_path)
-    except:
+    except Exception:
         logging.error("Failed to install wheel %s", wheel_path)
         print("Failed to install wheel %s" % wheel_path)
         raise
@@ -180,7 +180,7 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
         wheel_metadata = pip("show", package_name.split("==")[0])
         # if wheel is already installed, save version to revert upgrade if constraints fail
         version = wheel_metadata.split("Version:")[1].split("\n")[0].strip()
-    except:
+    except Exception:
         #wheel is not installed
         version = None
 
