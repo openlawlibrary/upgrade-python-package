@@ -30,7 +30,6 @@ def test_install_top_level_package_2_0_1_with_constraints_expect_success(
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {
@@ -50,7 +49,7 @@ def test_install_top_level_package_2_0_2_without_constraints_where_dependencies_
 ):
     package = "oll-test-top-level==2.0.2"
     cut = install_with_constraints
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(Exception):
         cut(
             wheel_path=package,
             constraints_file_path=None,

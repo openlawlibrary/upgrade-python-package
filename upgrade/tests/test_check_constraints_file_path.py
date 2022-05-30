@@ -1,54 +1,47 @@
+import pytest
 from pathlib import Path
 from mock import patch
 from upgrade.scripts.upgrade_python_package import get_constraints_file_path
 from .conftest import VENV_PATH, install_local_package
 
 
-def test_get_constraints_for_dependency1_from_venv_expect_constraints_exist_and_match():
-    full_package_name = "oll_dependency1-2.0.1-py2.py3-none-any.whl"
+@pytest.mark.parametrize(
+    "package_wheel, package_name, expected_constraints",
+    [
+        (
+            "oll_dependency1-2.0.1-py2.py3-none-any.whl",
+            "oll-dependency1",
+            ["Pillow==6.2.2", "contextvars==2.4"],
+        ),
+        (
+            "oll_dependency2-2.0.1-py2.py3-none-any.whl",
+            "oll-dependency2",
+            ["colorama==0.4.4"],
+        ),
+        (
+            "oll_test_top_level-2.0.1-py2.py3-none-any.whl",
+            "oll-test-top-level",
+            [
+                "defusedxml==0.7.1",
+                "colorama==0.4.4",
+                "Pillow==6.2.2",
+                "contextvars==2.4",
+            ],
+        ),
+    ],
+)
+def test_get_constraints_for_packages_requirements_from_venv_expect_constraints_exist_and_match(
+    package_wheel, package_name, expected_constraints
+):
+    full_package_name = package_wheel
     install_local_package(full_package_name, no_deps=True)
 
-    package = "oll-dependency1"
+    package = package_name
     cut = get_constraints_file_path
     constraints_file_path = cut(
         package, site_packages_dir=str(VENV_PATH / "lib" / "site-packages")
     )
-    expected = ["Pillow==6.2.2", "contextvars==2.4"]
-    actual = Path(constraints_file_path).read_text().splitlines()
-
-    assert len(actual) == len(expected)
-
-
-def test_get_constraints_for_dependency2_from_venv_expect_constraints_exist_and_match():
-    full_package_name = "oll_dependency2-2.0.1-py2.py3-none-any.whl"
-    install_local_package(full_package_name, no_deps=True)
-
-    package = "oll-dependency2"
-    cut = get_constraints_file_path
-    constraints_file_path = cut(
-        package, site_packages_dir=str(VENV_PATH / "lib" / "site-packages")
-    )
-    expected = ["colorama==0.4.4"]
-    actual = Path(constraints_file_path).read_text().splitlines()
-
-    assert len(actual) == len(expected)
-
-
-def test_get_constraints_for_top_level_package_from_venv_expect_constraints_exist_and_match():
-    full_package_name = "oll_test_top_level-2.0.1-py2.py3-none-any.whl"
-    install_local_package(full_package_name, no_deps=True)
-
-    package = "oll-test-top-level"
-    cut = get_constraints_file_path
-    constraints_file_path = cut(
-        package, site_packages_dir=str(VENV_PATH / "lib" / "site-packages")
-    )
-    expected = [
-        "defusedxml==0.7.1",
-        "colorama==0.4.4",
-        "Pillow==6.2.2",
-        "contextvars==2.4",
-    ]
+    expected = expected_constraints
     actual = Path(constraints_file_path).read_text().splitlines()
 
     assert len(actual) == len(expected)
