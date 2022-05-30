@@ -4,7 +4,7 @@ import sys
 import pytest
 from mock import patch
 from pathlib import Path
-from sys import platform
+from upgrade.scripts.utils import is_windows
 from upgrade.scripts.upgrade_python_package import pip, run
 
 CLOUDSMITH_KEY = os.environ.get("CLOUDSMITH_KEY")
@@ -14,9 +14,8 @@ VENV_PATH = Path(__file__).parent / "venv"
 original_executable = sys.executable
 
 
-
 def pytest_configure(config):
-    if platform == "win32" or platform == "cygwin":
+    if is_windows():
         python_path = Path("Scripts", "python.exe")
     else:
         python_path = Path("bin", "python")

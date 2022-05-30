@@ -9,9 +9,12 @@ from importlib import util
 from pathlib import Path
 import site
 
+from upgrade.scripts.utils import is_windows
+
 constraints_file_path = ""
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
+PYTHON_VERSION_RE = r"^python3.[0-9]+$"
 
 
 def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *args):
@@ -66,21 +69,48 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
             if site_packages_dir
             else Path(site.getsitepackages()[1])
         )
-        package_name = package_name.replace("-", "_")
-        dist_info_template = DIST_INFO_RE_FORMAT.format(package_name=package_name)
-        dist_info_dir_re = re.compile(dist_info_template)
-        res = [f for f in os.listdir(site_packages_dir) if dist_info_dir_re.match(f)]
-        for data_files_dir_name in res:
-            # get the path to the data_files_dir_name
-            data_files_dir = site_packages_dir / data_files_dir_name
-            top_level = (data_files_dir / "top_level.txt").read_text().splitlines()[0]
-            # get constraints file path
+        top_level_packages = get_top_level_packages(package_name, site_packages_dir)
+        if top_level_packages is None:
+            return None
+        for top_level in top_level_packages:
             constraints_file_path = site_packages_dir / top_level / "constraints.txt"
             # check if constraints file exists
             if os.path.exists(constraints_file_path):
                 return str(constraints_file_path)
 
     return None
+
+
+def get_top_level_packages(package_name, site_packages_dir=None):
+    site_packages_dir = (
+        Path(site_packages_dir)
+        if site_packages_dir
+        else Path(site.getsitepackages()[1])
+    )
+
+    # ding dist info and read top level package names
+    package_name = package_name.replace("-", "_")
+    dist_info_template = DIST_INFO_RE_FORMAT.format(package_name=package_name)
+
+    if is_windows():
+        packages_dir = site_packages_dir
+    else:
+        site_packages_parent = site_packages_dir.parent
+        python_version_re = re.compile(PYTHON_VERSION_RE)
+        python_dir = [
+            f for f in os.listdir(site_packages_parent) if python_version_re.match(f)
+        ]
+        if not len(python_dir):
+            return None
+        packages_dir = Path(site_packages_parent, python_dir[0], "site-packages")
+
+    dist_info_dir_re = re.compile(dist_info_template)
+    res = [f for f in os.listdir(packages_dir) if dist_info_dir_re.match(f)]
+    if not len(res):
+        return None
+
+    # get the path to the data_files_dir_name
+    return Path(packages_dir, res[0], "top_level.txt").read_text().splitlines()
 
 
 def install_with_constraints(
