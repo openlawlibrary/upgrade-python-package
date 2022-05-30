@@ -151,7 +151,7 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
     package = "oll-test-top-level==2.0.2"
 
     cut = upgrade_from_local_wheel
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(Exception):
         cut(
             package,
             skip_post_install=True,
