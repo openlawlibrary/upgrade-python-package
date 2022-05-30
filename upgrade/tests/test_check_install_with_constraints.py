@@ -30,7 +30,6 @@ def test_install_top_level_package_2_0_1_with_constraints_expect_success(
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {

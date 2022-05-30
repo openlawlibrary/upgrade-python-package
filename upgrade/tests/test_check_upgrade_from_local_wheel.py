@@ -10,7 +10,6 @@ def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_ex
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = [
@@ -44,7 +43,6 @@ def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {
@@ -81,7 +79,6 @@ def test_upgrade_local_wheel_top_level_package_from_2_0_0_to_2_0_1_expect_newer_
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {
