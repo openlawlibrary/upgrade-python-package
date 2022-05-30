@@ -4,6 +4,7 @@ import sys
 import pytest
 from mock import patch
 from pathlib import Path
+from upgrade.scripts.utils import is_windows
 from upgrade.scripts.upgrade_python_package import pip, run
 
 CLOUDSMITH_KEY = os.environ.get("CLOUDSMITH_KEY")
@@ -14,7 +15,11 @@ original_executable = sys.executable
 
 
 def pytest_configure(config):
-    sys.executable = str(VENV_PATH / "Scripts" / "python.exe")
+    if is_windows():
+        python_path = Path("Scripts", "python.exe")
+    else:
+        python_path = Path("bin", "python")
+    sys.executable = str(VENV_PATH / python_path)
     sys.modules["oll"] = None
 
 
@@ -58,8 +63,10 @@ def mocked_constraints_path():
 @pytest.fixture()
 def mock_find_spec():
     from importlib import util
-
+    original_find_spec = util.find_spec
     util.find_spec = lambda name, package=None: True
+    yield
+    util.find_spec = original_find_spec
 
 
 def install_local_package(dependency, no_deps=None):

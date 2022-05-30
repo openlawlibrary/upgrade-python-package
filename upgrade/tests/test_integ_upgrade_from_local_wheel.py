@@ -22,7 +22,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_0_to_2_0_1_expect_succe
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
     assert "oll-test-top-level==2.0.0" in dependencies_from_venv
     assert "oll-dependency1==2.0.0" in dependencies_from_venv
@@ -44,7 +43,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_0_to_2_0_1_expect_succe
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
     assert "oll-test-top-level==2.0.0" not in dependencies_from_venv
     assert "oll-dependency1==2.0.0" not in dependencies_from_venv
@@ -68,7 +66,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_1_to_2_0_2_expect_error
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
     assert "oll-test-top-level==2.0.1" in dependencies_from_venv
     assert "oll-dependency1==2.0.1" in dependencies_from_venv
@@ -90,7 +87,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_1_to_2_0_2_expect_error
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     assert "oll-test-top-level==2.0.2" not in dependencies_from_venv

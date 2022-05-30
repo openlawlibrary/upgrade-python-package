@@ -10,7 +10,6 @@ def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_ex
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = [
@@ -30,36 +29,6 @@ def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_ex
     assert actual == expected
 
 
-def test_upgrade_local_wheel_top_level_package_where_package_name_is_valid_expect_package_installed(
-    wheels_dir, use_pip, mocked_constraints_path
-):
-    package = "oll-test-top-level"
-    cut = upgrade_from_local_wheel
-    cut(
-        package,
-        skip_post_install=True,
-        wheels_path=str(wheels_dir),
-    )
-
-    dependencies_from_venv = use_pip(
-        "list",
-        "--format=freeze",
-        "--exclude-editable",
-        shell=True,
-    ).splitlines()
-
-    expected_packages = {
-        "oll-test-top-level==2.0.0",
-        "oll-dependency1==2.0.0",
-        "oll-dependency2==2.0.0",
-    }
-    actual_packages = set(dependencies_from_venv)
-
-    expected = True
-    actual = expected_packages.issubset(actual_packages)
-    assert actual == expected
-
-
 def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid_expect_package_installed(
     wheels_dir, use_pip, mocked_constraints_path
 ):
@@ -74,7 +43,6 @@ def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {
@@ -111,7 +79,6 @@ def test_upgrade_local_wheel_top_level_package_from_2_0_0_to_2_0_1_expect_newer_
         "list",
         "--format=freeze",
         "--exclude-editable",
-        shell=True,
     ).splitlines()
 
     expected_packages = {
@@ -151,7 +118,7 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
     package = "oll-test-top-level==2.0.2"
 
     cut = upgrade_from_local_wheel
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(Exception):
         cut(
             package,
             skip_post_install=True,
