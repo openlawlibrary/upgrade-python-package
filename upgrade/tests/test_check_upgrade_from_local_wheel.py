@@ -30,36 +30,6 @@ def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_ex
     assert actual == expected
 
 
-def test_upgrade_local_wheel_top_level_package_where_package_name_is_valid_expect_package_installed(
-    wheels_dir, use_pip, mocked_constraints_path
-):
-    package = "oll-test-top-level"
-    cut = upgrade_from_local_wheel
-    cut(
-        package,
-        skip_post_install=True,
-        wheels_path=str(wheels_dir),
-    )
-
-    dependencies_from_venv = use_pip(
-        "list",
-        "--format=freeze",
-        "--exclude-editable",
-        shell=True,
-    ).splitlines()
-
-    expected_packages = {
-        "oll-test-top-level==2.0.0",
-        "oll-dependency1==2.0.0",
-        "oll-dependency2==2.0.0",
-    }
-    actual_packages = set(dependencies_from_venv)
-
-    expected = True
-    actual = expected_packages.issubset(actual_packages)
-    assert actual == expected
-
-
 def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid_expect_package_installed(
     wheels_dir, use_pip, mocked_constraints_path
 ):
