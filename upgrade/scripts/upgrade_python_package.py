@@ -17,7 +17,9 @@ DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
 
 
-def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *args):
+def upgrade_and_run(
+    package_install_cmd, force, skip_post_install, version, cloudsmith_url=None, *args
+):
     """
     If the package needs to be upgraded upgrade it and then
     run the package (`python -m <package_name>`).
@@ -33,7 +35,9 @@ def upgrade_and_run(package_install_cmd, force, skip_post_install, version, *arg
         logging.info(
             "Trying to install version %s of package %s", version, package_name
         )
-        was_updated = attempt_to_install_version(package_install_cmd, version)
+        was_updated = attempt_to_install_version(
+            package_install_cmd, version, cloudsmith_url
+        )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
         was_updated = attempt_upgrade(package_install_cmd)
@@ -114,7 +118,7 @@ def get_top_level_packages(package_name, site_packages_dir=None):
 
 
 def install_with_constraints(
-    wheel_path, constraints_file_path, cloudsmith_key=None, local=False, wheels_dir=None
+    wheel_path, constraints_file_path, cloudsmith_url=None, local=False, wheels_dir=None
 ):
     """
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
@@ -122,7 +126,7 @@ def install_with_constraints(
     try:
         if constraints_file_path:
             logging.info("Installing wheel with constraints %s", wheel_path)
-            if cloudsmith_key:
+            if cloudsmith_url:
                 pip(
                     "install",
                     wheel_path,
@@ -131,7 +135,7 @@ def install_with_constraints(
                     "--extra-index-url",
                     "https://pypi.python.org/simple/",
                     "--index-url",
-                    f"https://dl.cloudsmith.io/{cloudsmith_key}/openlawlibrary/development/python/index/",
+                    cloudsmith_url,
                 )
             elif local:
                 pip(
@@ -150,7 +154,16 @@ def install_with_constraints(
                 "No constraints.txt found. Installing wheel %s without constraints.txt",
                 wheel_path,
             )
-            if local:
+            if cloudsmith_url:
+                pip(
+                    "install",
+                    wheel_path,
+                    "--extra-index-url",
+                    "https://pypi.python.org/simple/",
+                    "--index-url",
+                    cloudsmith_url,
+                )
+            elif local:
                 pip("install", wheel_path, "--find-links", wheels_dir)
             else:
                 pip("install", wheel_path)
@@ -160,7 +173,7 @@ def install_with_constraints(
         raise
 
 
-def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=None):
+def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=None):
     """
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
@@ -168,7 +181,9 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
     if local:
         package_name, extra = split_package_name_and_extra(package_name)
         try:
-            wheel = glob.glob(f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl')[0]
+            wheel = glob.glob(
+                f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
+            )[0]
         except IndexError:
             print(f"Wheel {package_name} not found")
             raise
@@ -176,15 +191,24 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
     else:
         to_install = package_name
     try:
-        #check if the wheel is already installed
+        # check if the wheel is already installed
         wheel_metadata = pip("show", package_name.split("==")[0])
         # if wheel is already installed, save version to revert upgrade if constraints fail
         version = wheel_metadata.split("Version:")[1].split("\n")[0].strip()
     except Exception:
-        #wheel is not installed
+        # wheel is not installed
         version = None
 
-    pip("install", "--no-deps", to_install)
+    if cloudsmith_url is not None:
+        pip(
+            "install",
+            "--no-deps",
+            to_install,
+            "--index-url",
+            cloudsmith_url,
+        )
+    else:
+        pip("install", "--no-deps", to_install)
 
     try:
         pip("check")
@@ -193,15 +217,21 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
         constraints_file_path = get_constraints_file_path(package_name)
         try:
             install_with_constraints(
-                package_name, constraints_file_path, cloudsmith_key, local, wheels_path
+                package_name, constraints_file_path, cloudsmith_url, local, wheels_path
             )
         except:
-            #if install with constraints fails or the installation caused broken dependencies
-            #revert back to old package version
+            # if install with constraints fails or the installation caused broken dependencies
+            # revert back to old package version
             if version is not None:
                 package_name = package_name.split("==")[0]
                 if local:
-                    pip("install", "--no-deps", f"{package_name}=={version}", "--find-links", wheels_path)
+                    pip(
+                        "install",
+                        "--no-deps",
+                        f"{package_name}=={version}",
+                        "--find-links",
+                        wheels_path,
+                    )
                 else:
                     pip("install", "--no-deps", f"{package_name}=={version}")
             else:
@@ -209,12 +239,12 @@ def install_wheel(package_name, cloudsmith_key=None, local=False, wheels_path=No
 
 
 def upgrade_from_local_wheel(
-    package_install_cmd, skip_post_install, *args, cloudsmith_key=None, wheels_path=None
+    package_install_cmd, skip_post_install, *args, cloudsmith_url=None, wheels_path=None
 ):
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     try:
         install_wheel(
-            package_install_cmd, cloudsmith_key, local=True, wheels_path=wheels_path
+            package_install_cmd, cloudsmith_url, local=True, wheels_path=wheels_path
         )
     except Exception:
         raise
@@ -226,7 +256,7 @@ def upgrade_from_local_wheel(
 development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
 
 
-def attempt_to_install_version(package_install_cmd, version):
+def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None):
     """
     attempt to install a specific version of the given package
     """
@@ -234,7 +264,7 @@ def attempt_to_install_version(package_install_cmd, version):
         resp = ""
         # constraints_file_path = install_with_no_deps(f'{package_install_cmd}=={version}')
         # install_with_constraints(f'{package_install_cmd}=={version}', constraints_file_path)
-        install_wheel(f"{package_install_cmd}=={version}")
+        install_wheel(f"{package_install_cmd}=={version}", cloudsmith_url)
     except Exception:
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
@@ -417,11 +447,11 @@ parser.add_argument(
     help="Package version to install",
 )
 parser.add_argument(
-    "--cloudsmith-key",
+    "--cloudsmith-url",
     action="store",
     type=str,
     default=None,
-    help="Cloudsmith key is necessary during local testing.",
+    help="Cloudsmith URL with an API key necessary during local testing.",
 )
 parser.add_argument(
     "--wheels-path",
@@ -463,7 +493,7 @@ if __name__ == "__main__":
                 parsed_args.package,
                 parsed_args.skip_post_install,
                 wheels_path=wheels_path,
-                cloudsmith_key=parsed_args.cloudsmith_key,
+                cloudsmith_url=parsed_args.cloudsmith_url,
                 *parsed_args.vars,
             )
     elif parsed_args.run_initial_post_install:
@@ -474,5 +504,6 @@ if __name__ == "__main__":
             parsed_args.force,
             parsed_args.skip_post_install,
             parsed_args.version,
+            cloudsmith_url=parsed_args.cloudsmith_url,
             *parsed_args.vars,
         )
