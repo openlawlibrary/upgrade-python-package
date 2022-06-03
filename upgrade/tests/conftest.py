@@ -47,8 +47,8 @@ def use_pip():
 
 
 @pytest.fixture
-def constraints_path():
-    return str(VENV_PATH / "lib" / "site-packages" / "oll" / "constraints.txt")
+def constraints_dir():
+    return VENV_PATH / "lib" / "site-packages"
 
 
 @pytest.fixture()

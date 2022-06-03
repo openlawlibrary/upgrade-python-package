@@ -65,6 +65,8 @@ if __name__ == "__main__":
     wheels_path = this_dir / "repository"
     wheels_path.mkdir(parents=True, exist_ok=True)
     for path in projects_dir.iterdir():
+        if path == projects_dir:
+            continue
         if version:
             version_path = path / "VERSION"
             if not version_path.is_file():

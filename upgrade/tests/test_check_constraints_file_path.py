@@ -53,10 +53,9 @@ def test_get_constraints_for_wrong_package_from_venv_expect_no_constraints_to_ex
 
     package = "wrong-package"
     cut = get_constraints_file_path
-    with patch("upgrade.scripts.upgrade_python_package.constraints_file_path", None):
-        constraints_file_path = cut(
-            package, site_packages_dir=str(VENV_PATH / "lib" / "site-packages")
-        )
+    constraints_file_path = cut(
+        package, site_packages_dir=str(VENV_PATH / "lib" / "site-packages")
+    )
     expected = None
     actual = constraints_file_path
     assert actual == expected
