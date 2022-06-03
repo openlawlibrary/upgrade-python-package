@@ -14,5 +14,5 @@ if __name__ == "__main__":
             f"oll-dependency2=={version}",
             'defusedxml'
         ],
-        data_files=[("lib/site-packages/oll", ["./README.md", "./constraints.txt"])],
+        data_files=[("lib/site-packages/oll_test_top_level", ["./README.md", "./constraints.txt"])],
     )

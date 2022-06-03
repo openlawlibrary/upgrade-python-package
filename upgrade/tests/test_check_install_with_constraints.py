@@ -13,7 +13,7 @@ from .conftest import install_local_package
     ],
 )   
 def test_install_top_level_package_2_0_1_with_constraints_expect_success(
-    version, wheels_dir, constraints_path, use_pip,
+    version, wheels_dir, constraints_dir, use_pip,
 ):
     full_package_name = f'oll_test_top_level-{version}-py2.py3-none-any.whl'
     install_local_package(full_package_name, no_deps=True)
@@ -22,7 +22,7 @@ def test_install_top_level_package_2_0_1_with_constraints_expect_success(
     cut = install_with_constraints
     cut(
         wheel_path=package,
-        constraints_file_path=constraints_path,
+        constraints_file_path=str(constraints_dir / "oll_test_top_level" / "constraints.txt"),
         local=True,
         wheels_dir=str(wheels_dir),
     )
