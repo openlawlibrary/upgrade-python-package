@@ -54,9 +54,7 @@ def run(*command, **kwargs):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--version", help="Version of test projects"
-)
+parser.add_argument("--version", help="Version of test projects")
 if __name__ == "__main__":
     parsed_args = parser.parse_args()
     version = parsed_args.version
