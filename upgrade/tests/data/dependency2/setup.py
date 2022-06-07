@@ -7,4 +7,8 @@ this_dir = Path(__file__).absolute().parent
 
 
 if __name__ == "__main__":
-    setup(data_files=[("lib/site-packages/oll_dependency2", ["./README.md", "./constraints.txt"])])
+    setup(
+        data_files=[
+            ("lib/site-packages/oll_dependency2", ["./README.md", "./constraints.txt"])
+        ]
+    )

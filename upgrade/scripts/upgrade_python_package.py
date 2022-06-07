@@ -74,7 +74,6 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
     return None
 
 
-
 def install_with_constraints(
     wheel_path, constraints_file_path, cloudsmith_url=None, local=False, wheels_dir=None
 ):
@@ -433,35 +432,74 @@ parser.add_argument(
     + 'These variables should be named "UPDATE_PACKAGE_NAME"',
 )
 parser.add_argument("--log-location", help="Specifies where to store the log file")
-if __name__ == "__main__":
-    parsed_args = parser.parse_args()
-    if parsed_args.test:
+
+
+def upgrade_python_package(
+    package,
+    wheels_path=None,
+    version=None,
+    cloudsmith_url=None,
+    test=False,
+    skip_post_install=False,
+    should_run_initial_post_install=False,
+    force=False,
+    log_location=None,
+    update_from_local_wheels=None,
+    *vars,
+):
+    if test:
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
     else:
-        log_location = parsed_args.log_location or "/var/log/upgrade_python_package.log"
+        log_location = log_location or "/var/log/upgrade_python_package.log"
         logging.basicConfig(
             filename=log_location,
             level=logging.WARNING,
             format="%(asctime)s %(message)s",
         )
-    wheels_path = parsed_args.wheels_path or "/vagrant/wheels"
-    if parsed_args.update_from_local_wheels:
-        if parsed_args.package:
-            upgrade_from_local_wheel(
-                parsed_args.package,
-                parsed_args.skip_post_install,
-                wheels_path=wheels_path,
-                cloudsmith_url=parsed_args.cloudsmith_url,
-                *parsed_args.vars,
-            )
-    elif parsed_args.run_initial_post_install:
-        run_initial_post_install(parsed_args.package, *parsed_args.vars)
+    wheels_path = wheels_path or "/vagrant/wheels"
+    if update_from_local_wheels:
+        upgrade_from_local_wheel(
+            package,
+            skip_post_install,
+            wheels_path=wheels_path,
+            cloudsmith_url=cloudsmith_url,
+            *vars,
+        )
+    elif should_run_initial_post_install:
+        run_initial_post_install(package, *vars)
     else:
         upgrade_and_run(
-            parsed_args.package,
-            parsed_args.force,
-            parsed_args.skip_post_install,
-            parsed_args.version,
-            cloudsmith_url=parsed_args.cloudsmith_url,
-            *parsed_args.vars,
+            package,
+            force,
+            skip_post_install,
+            version,
+            cloudsmith_url,
+            *vars,
         )
+
+
+if __name__ == "__main__":
+    parsed_args = parser.parse_args()
+    test = parsed_args.test
+    log_location = parsed_args.log_location
+    wheels_path = parsed_args.wheels_path
+    update_from_local_wheels = parsed_args.update_from_local_wheels
+    package = parsed_args.package
+    skip_post_install = parsed_args.skip_post_install
+    cloudsmith_url = parsed_args.cloudsmith_url
+    force = parsed_args.force
+    should_run_initial_post_install = parsed_args.run_initial_post_install
+    version = parsed_args.version
+    upgrade_python_package(
+        package,
+        wheels_path,
+        version,
+        cloudsmith_url,
+        test,
+        skip_post_install,
+        should_run_initial_post_install,
+        force,
+        log_location,
+        update_from_local_wheels,
+        *parsed_args.vars,
+    )

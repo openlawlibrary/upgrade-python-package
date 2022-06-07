@@ -63,6 +63,7 @@ def mocked_constraints_path():
 @pytest.fixture()
 def mock_find_spec():
     from importlib import util
+
     original_find_spec = util.find_spec
     util.find_spec = lambda name, package=None: True
     yield
