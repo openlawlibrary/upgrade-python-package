@@ -477,8 +477,7 @@ def upgrade_python_package(
             *vars,
         )
 
-
-if __name__ == "__main__":
+def main():
     parsed_args = parser.parse_args()
     test = parsed_args.test
     log_location = parsed_args.log_location
@@ -503,3 +502,6 @@ if __name__ == "__main__":
         update_from_local_wheels,
         *parsed_args.vars,
     )
+
+if __name__ == "__main__":
+    main()
