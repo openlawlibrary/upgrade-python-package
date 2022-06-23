@@ -81,49 +81,36 @@ def install_with_constraints(
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
     """
     try:
+        args = [
+            "install",
+            wheel_path,
+        ]
         if constraints_file_path:
             logging.info("Installing wheel with constraints %s", wheel_path)
-            if cloudsmith_url:
-                pip(
-                    "install",
-                    wheel_path,
-                    "-c",
-                    constraints_file_path,
-                    "--extra-index-url",
-                    "https://pypi.python.org/simple/",
-                    "--index-url",
-                    cloudsmith_url,
-                )
-            elif local:
-                pip(
-                    "install",
-                    wheel_path,
-                    "-c",
-                    constraints_file_path,
-                    "--find-links",
-                    wheels_dir,
-                )
-            else:
-                pip("install", wheel_path, "-c", constraints_file_path)
+            args.extend([
+                "-c",
+                constraints_file_path
+            ])
         else:
             # install without constraints for backwards compatibility
             logging.info(
                 "No constraints.txt found. Installing wheel %s without constraints.txt",
                 wheel_path,
             )
-            if cloudsmith_url:
-                pip(
-                    "install",
-                    wheel_path,
-                    "--extra-index-url",
-                    "https://pypi.python.org/simple/",
-                    "--index-url",
-                    cloudsmith_url,
-                )
-            elif local:
-                pip("install", wheel_path, "--find-links", wheels_dir)
-            else:
-                pip("install", wheel_path)
+        if local:
+            args.extend([
+                "--find-links",
+                wheels_dir,
+            ])
+        if cloudsmith_url:
+            args.extend([
+                "--extra-index-url",
+                "https://pypi.python.org/simple/",
+                "--index-url",
+                cloudsmith_url,
+            ])
+        pip(*args)
+
     except Exception:
         logging.error("Failed to install wheel %s", wheel_path)
         print("Failed to install wheel %s" % wheel_path)
@@ -174,7 +161,7 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
         constraints_file_path = get_constraints_file_path(package_name)
         try:
             install_with_constraints(
-                package_name, constraints_file_path, cloudsmith_url, local, wheels_path
+                to_install, constraints_file_path, cloudsmith_url, local, wheels_path
             )
         except:
             # if install with constraints fails or the installation caused broken dependencies
