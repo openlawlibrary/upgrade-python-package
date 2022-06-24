@@ -79,7 +79,7 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_1_to_2_0_2_expect_error
     )
     out, _ = capfd.readouterr()
 
-    assert f"Failed to install wheel {package}" in out
+    assert f"Failed to install wheel" in out
     assert "Successfully uninstalled oll-test-top-level-2.0.2" in out
     assert "Successfully installed oll-test-top-level-2.0.1" in out
 
