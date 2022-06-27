@@ -80,6 +80,7 @@ def install_with_constraints(
     """
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
     """
+    resp = ""
     try:
         args = [
             "install",
@@ -109,19 +110,20 @@ def install_with_constraints(
                 "--index-url",
                 cloudsmith_url,
             ])
-        pip(*args)
-
+        resp = pip(*args)
+        return resp
     except Exception:
         logging.error("Failed to install wheel %s", wheel_path)
         print("Failed to install wheel %s" % wheel_path)
         raise
 
 
-def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=None):
+def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=None, version_cmd=None):
     """
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
     """
+    resp = ""
     if local:
         package_name, extra = split_package_name_and_extra(package_name)
         try:
@@ -133,10 +135,11 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
             raise
         to_install = wheel + extra
     else:
-        to_install = package_name
+        to_install = package_name + version_cmd if version_cmd is not None else package_name
     try:
         # check if the wheel is already installed
-        wheel_metadata = pip("show", package_name.split("==")[0])
+        show_package = package_name.split("==")[0] if local else package_name
+        wheel_metadata = pip("show", show_package)
         # if wheel is already installed, save version to revert upgrade if constraints fail
         version = wheel_metadata.split("Version:")[1].split("\n")[0].strip()
     except Exception:
@@ -144,7 +147,7 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
         version = None
 
     if cloudsmith_url is not None:
-        pip(
+        resp = pip(
             "install",
             "--no-deps",
             to_install,
@@ -152,7 +155,7 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
             cloudsmith_url,
         )
     else:
-        pip("install", "--no-deps", to_install)
+        resp = pip("install", "--no-deps", to_install)
 
     try:
         pip("check")
@@ -160,7 +163,7 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
         # try to install with constraints
         constraints_file_path = get_constraints_file_path(package_name)
         try:
-            install_with_constraints(
+            resp = install_with_constraints(
                 to_install, constraints_file_path, cloudsmith_url, local, wheels_path
             )
         except:
@@ -180,6 +183,7 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
                     pip("install", "--no-deps", f"{package_name}=={version}")
             else:
                 raise
+    return resp
 
 
 def upgrade_from_local_wheel(
@@ -206,9 +210,7 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
     """
     try:
         resp = ""
-        # constraints_file_path = install_with_no_deps(f'{package_install_cmd}=={version}')
-        # install_with_constraints(f'{package_install_cmd}=={version}', constraints_file_path)
-        install_wheel(f"{package_install_cmd}=={version}", cloudsmith_url)
+        resp = install_wheel(package_install_cmd, cloudsmith_url, version_cmd=version)
     except Exception:
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
