@@ -37,7 +37,7 @@ def upgrade_and_run(
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
-        was_updated = attempt_upgrade(package_install_cmd)
+        was_updated = attempt_upgrade(package_install_cmd, cloudsmith_url, *args)
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
         try_running_module(module_name, *args)
@@ -218,17 +218,18 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
     return "Successfully installed" in resp
 
 
-def attempt_upgrade(package_install_cmd):
+def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     """
     attempt to upgrade a packgage with the given package_install_cmd.
     return True if it was upgraded.
     """
     pip_config = pip("config", "list")
     pip_args = []
-    match = development_index_re.search(pip_config)
+    match = development_index_re.search(pip_config) or "--pre" in str(args)
     if match:
         pip_args.append("--pre")
-
+    if cloudsmith_url is not None:
+        pip_args.append(f'--index-url={cloudsmith_url}')
     resp = pip("install", *pip_args, "--upgrade", package_install_cmd)
     was_upgraded = "Requirement already up-to-date" not in resp
     if was_upgraded:
