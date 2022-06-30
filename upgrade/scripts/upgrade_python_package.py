@@ -88,10 +88,7 @@ def install_with_constraints(
         ]
         if constraints_file_path:
             logging.info("Installing wheel with constraints %s", wheel_path)
-            args.extend([
-                "-c",
-                constraints_file_path
-            ])
+            args.extend(["-c", constraints_file_path])
         else:
             # install without constraints for backwards compatibility
             logging.info(
@@ -99,17 +96,21 @@ def install_with_constraints(
                 wheel_path,
             )
         if local:
-            args.extend([
-                "--find-links",
-                wheels_dir,
-            ])
+            args.extend(
+                [
+                    "--find-links",
+                    wheels_dir,
+                ]
+            )
         if cloudsmith_url:
-            args.extend([
-                "--extra-index-url",
-                "https://pypi.python.org/simple/",
-                "--index-url",
-                cloudsmith_url,
-            ])
+            args.extend(
+                [
+                    "--extra-index-url",
+                    "https://pypi.python.org/simple/",
+                    "--index-url",
+                    cloudsmith_url,
+                ]
+            )
         resp = pip(*args)
         return resp
     except Exception:
@@ -118,7 +119,9 @@ def install_with_constraints(
         raise
 
 
-def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=None, version_cmd=None):
+def install_wheel(
+    package_name, cloudsmith_url=None, local=False, wheels_path=None, version_cmd=None
+):
     """
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
@@ -135,7 +138,9 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
             raise
         to_install = wheel + extra
     else:
-        to_install = package_name + version_cmd if version_cmd is not None else package_name
+        to_install = (
+            package_name + version_cmd if version_cmd is not None else package_name
+        )
     try:
         # check if the wheel is already installed
         show_package = package_name.split("==")[0] if local else package_name
@@ -228,8 +233,15 @@ def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     match = development_index_re.search(pip_config) or "--pre" in str(args)
     if match:
         pip_args.append("--pre")
-    if cloudsmith_url is not None:
-        pip_args.append(f'--index-url={cloudsmith_url}')
+    if cloudsmith_url:
+        pip_args.extend(
+            [
+                "--extra-index-url",
+                "https://pypi.python.org/simple/",
+                "--index-url",
+                cloudsmith_url,
+            ]
+        )
     resp = pip("install", *pip_args, "--upgrade", package_install_cmd)
     was_upgraded = "Requirement already up-to-date" not in resp
     if was_upgraded:
@@ -467,6 +479,7 @@ def upgrade_python_package(
             *vars,
         )
 
+
 def main():
     parsed_args = parser.parse_args()
     test = parsed_args.test
@@ -492,6 +505,7 @@ def main():
         update_from_local_wheels,
         *parsed_args.vars,
     )
+
 
 if __name__ == "__main__":
     main()
