@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import os
@@ -28,19 +29,24 @@ def upgrade_and_run(
     Restart uwsgi application that is the same name as package.
     """
     package_name = package_install_cmd.split("[", 1)[0]
+    was_updated = False
+    response_err = ""
     if version is not None:
         logging.info(
             "Trying to install version %s of package %s", version, package_name
         )
-        was_updated = attempt_to_install_version(
+        was_updated, response_err = attempt_to_install_version(
             package_install_cmd, version, cloudsmith_url
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
-        was_updated = attempt_upgrade(package_install_cmd, cloudsmith_url, *args)
+        was_updated, response_err = attempt_upgrade(
+            package_install_cmd, cloudsmith_url, *args
+        )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
         try_running_module(module_name, *args)
+    return was_updated, response_err
 
 
 def get_constraints_file_path(package_name, site_packages_dir=None):
@@ -85,7 +91,7 @@ def install_with_constraints(
     """
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
     """
-    resp = ""
+    resp = None
     try:
         install_args = [
             "install",
@@ -228,14 +234,14 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
     """
     attempt to install a specific version of the given package
     """
+    resp = ""
     try:
-        resp = ""
         resp = install_wheel(package_install_cmd, cloudsmith_url, version_cmd=version)
-    except Exception:
+    except Exception as e:
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
-        return False
-    return "Successfully installed" in resp
+        return False, str(e)
+    return "Successfully installed" in resp, resp
 
 
 def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
@@ -257,7 +263,7 @@ def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
         logging.info('"%s" package was upgraded.', package_install_cmd)
     else:
         logging.info('"%s" package was already up-to-date.', package_install_cmd)
-    return was_upgraded
+    return was_upgraded, resp
 
 
 def reload_uwsgi_app(package_name):
@@ -443,6 +449,11 @@ parser.add_argument(
     + 'These variables should be named "UPDATE_PACKAGE_NAME"',
 )
 parser.add_argument("--log-location", help="Specifies where to store the log file")
+parser.add_argument(
+    "--format-output",
+    action="store_true",
+    help="Determines whether output of upgrade will be a JSON text response containing success and response",
+)
 
 
 def upgrade_python_package(
@@ -456,8 +467,11 @@ def upgrade_python_package(
     force=False,
     log_location=None,
     update_from_local_wheels=None,
+    format_output=False,
     *vars,
 ):
+    success = False
+    response_err = ""
     if test:
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
     else:
@@ -479,7 +493,7 @@ def upgrade_python_package(
     elif should_run_initial_post_install:
         run_initial_post_install(package, *vars)
     else:
-        upgrade_and_run(
+        success, response_err = upgrade_and_run(
             package,
             force,
             skip_post_install,
@@ -487,6 +501,13 @@ def upgrade_python_package(
             cloudsmith_url,
             *vars,
         )
+    if format_output:
+        response = {
+            "success": success,
+            "responseError": response_err
+        }
+        logging.info(json.dumps(response))
+        print(json.dumps(response))
 
 
 def main():
@@ -501,6 +522,7 @@ def main():
     force = parsed_args.force
     should_run_initial_post_install = parsed_args.run_initial_post_install
     version = parsed_args.version
+    format_output = parsed_args.format_output
     upgrade_python_package(
         package,
         wheels_path,
@@ -512,6 +534,7 @@ def main():
         force,
         log_location,
         update_from_local_wheels,
+        format_output,
         *parsed_args.vars,
     )
 
