@@ -502,12 +502,12 @@ def upgrade_python_package(
             *vars,
         )
     if format_output:
-        response = {
-            "success": success,
-            "responseError": response_err
-        }
-        logging.info(json.dumps(response))
-        print(json.dumps(response))
+        while len(logging.root.handlers) > 0:
+            logging.root.removeHandler(logging.root.handlers[-1])
+        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
+        response = json.dumps({"success": success, "responseError": response_err})
+        logging.info(response)
+        print(response)
 
 
 def main():
