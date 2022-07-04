@@ -8,6 +8,7 @@ import glob
 import argparse
 from importlib import util
 from pathlib import Path
+import requests
 import site
 
 
@@ -203,6 +204,14 @@ def install_wheel(
             else:
                 raise
     return resp
+
+
+def is_cloudsmith_url_valid(cloudsmith_url):
+    response = requests.get(cloudsmith_url)
+    if response.status_code != 200:
+        raise Exception(
+            f"Failed to reach cloudsmith. Provided invalid URL: {cloudsmith_url}"
+        )
 
 
 def is_package_already_installed(package):
@@ -490,6 +499,8 @@ def upgrade_python_package(
                 level=logging.WARNING,
                 format="%(asctime)s %(message)s",
             )
+        if cloudsmith_url:
+            is_cloudsmith_url_valid(cloudsmith_url)
         wheels_path = wheels_path or "/vagrant/wheels"
         if update_from_local_wheels:
             upgrade_from_local_wheel(
