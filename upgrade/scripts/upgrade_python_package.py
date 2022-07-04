@@ -480,35 +480,38 @@ def upgrade_python_package(
 ):
     success = False
     response_err = ""
-    if test:
-        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-    else:
-        log_location = log_location or "/var/log/upgrade_python_package.log"
-        logging.basicConfig(
-            filename=log_location,
-            level=logging.WARNING,
-            format="%(asctime)s %(message)s",
-        )
-    wheels_path = wheels_path or "/vagrant/wheels"
-    if update_from_local_wheels:
-        upgrade_from_local_wheel(
-            package,
-            skip_post_install,
-            wheels_path=wheels_path,
-            cloudsmith_url=cloudsmith_url,
-            *vars,
-        )
-    elif should_run_initial_post_install:
-        run_initial_post_install(package, *vars)
-    else:
-        success, response_err = upgrade_and_run(
-            package,
-            force,
-            skip_post_install,
-            version,
-            cloudsmith_url,
-            *vars,
-        )
+    try:
+        if test:
+            logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
+        else:
+            log_location = log_location or "/var/log/upgrade_python_package.log"
+            logging.basicConfig(
+                filename=log_location,
+                level=logging.WARNING,
+                format="%(asctime)s %(message)s",
+            )
+        wheels_path = wheels_path or "/vagrant/wheels"
+        if update_from_local_wheels:
+            upgrade_from_local_wheel(
+                package,
+                skip_post_install,
+                wheels_path=wheels_path,
+                cloudsmith_url=cloudsmith_url,
+                *vars,
+            )
+        elif should_run_initial_post_install:
+            run_initial_post_install(package, *vars)
+        else:
+            success, response_err = upgrade_and_run(
+                package,
+                force,
+                skip_post_install,
+                version,
+                cloudsmith_url,
+                *vars,
+            )
+    except Exception as e:
+        response_err += str(e)
     if format_output:
         while len(logging.root.handlers) > 0:
             logging.root.removeHandler(logging.root.handlers[-1])
