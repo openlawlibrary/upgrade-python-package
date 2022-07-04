@@ -160,15 +160,8 @@ def install_wheel(
             if version_cmd is not None
             else package_name + extra
         )
-    try:
-        # check if the wheel is already installed
-        show_package = package_name.split("==")[0] if local else package_name
-        wheel_metadata = pip("show", show_package)
-        # if wheel is already installed, save version to revert upgrade if constraints fail
-        version = wheel_metadata.split("Version:")[1].split("\n")[0].strip()
-    except Exception:
-        # wheel is not installed
-        version = None
+
+    version = is_package_already_installed(package_name)
 
     if cloudsmith_url is not None:
         resp = pip(
@@ -210,6 +203,21 @@ def install_wheel(
             else:
                 raise
     return resp
+
+
+def is_package_already_installed(package):
+    results = pip("list", "--format", "json")
+    parsed_results = json.loads(results)
+    package = package.split("==")[0] if "==" in package else package
+    found_package = [
+        (element["name"], element["version"])
+        for element in parsed_results
+        if element["name"] == package
+    ]
+    if found_package:
+        _, version = found_package.pop()
+        return version
+    return None
 
 
 def upgrade_from_local_wheel(
