@@ -7,7 +7,7 @@ from pathlib import Path
 from upgrade.scripts.utils import is_windows
 from upgrade.scripts.upgrade_python_package import pip, run
 
-CLOUDSMITH_KEY = os.environ.get("CLOUDSMITH_KEY")
+CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)
 
 REPOSITORY_WHEELS_PATH = Path(__file__).parent / "repository"
 VENV_PATH = Path(__file__).parent / "venv"

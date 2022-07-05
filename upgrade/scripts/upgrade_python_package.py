@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import os
@@ -7,6 +8,7 @@ import glob
 import argparse
 from importlib import util
 from pathlib import Path
+import requests
 import site
 
 
@@ -28,19 +30,24 @@ def upgrade_and_run(
     Restart uwsgi application that is the same name as package.
     """
     package_name = package_install_cmd.split("[", 1)[0]
+    was_updated = False
+    response_err = ""
     if version is not None:
         logging.info(
             "Trying to install version %s of package %s", version, package_name
         )
-        was_updated = attempt_to_install_version(
+        was_updated, response_err = attempt_to_install_version(
             package_install_cmd, version, cloudsmith_url
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
-        was_updated = attempt_upgrade(package_install_cmd)
+        was_updated, response_err = attempt_upgrade(
+            package_install_cmd, cloudsmith_url, *args
+        )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
         try_running_module(module_name, *args)
+    return was_updated, response_err
 
 
 def get_constraints_file_path(package_name, site_packages_dir=None):
@@ -75,22 +82,25 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
 
 
 def install_with_constraints(
-    wheel_path, constraints_file_path, cloudsmith_url=None, local=False, wheels_dir=None
+    wheel_path,
+    constraints_file_path,
+    cloudsmith_url=None,
+    local=False,
+    wheels_dir=None,
+    *args,
 ):
     """
     Install a wheel with constraints. If there is no constraints file, then install it without constraints.
     """
+    resp = None
     try:
-        args = [
+        install_args = [
             "install",
             wheel_path,
         ]
         if constraints_file_path:
             logging.info("Installing wheel with constraints %s", wheel_path)
-            args.extend([
-                "-c",
-                constraints_file_path
-            ])
+            install_args.extend(["-c", constraints_file_path])
         else:
             # install without constraints for backwards compatibility
             logging.info(
@@ -98,32 +108,45 @@ def install_with_constraints(
                 wheel_path,
             )
         if local:
-            args.extend([
-                "--find-links",
-                wheels_dir,
-            ])
+            install_args.extend(
+                [
+                    "--find-links",
+                    wheels_dir,
+                ]
+            )
         if cloudsmith_url:
-            args.extend([
-                "--extra-index-url",
-                "https://pypi.python.org/simple/",
-                "--index-url",
-                cloudsmith_url,
-            ])
-        pip(*args)
-
+            install_args.extend(
+                [
+                    "--extra-index-url",
+                    "https://pypi.python.org/simple/",
+                    "--index-url",
+                    cloudsmith_url,
+                ]
+            )
+        install_args.extend(args)
+        resp = pip(*install_args)
+        return resp
     except Exception:
         logging.error("Failed to install wheel %s", wheel_path)
         print("Failed to install wheel %s" % wheel_path)
         raise
 
 
-def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=None):
+def install_wheel(
+    package_name,
+    cloudsmith_url=None,
+    local=False,
+    wheels_path=None,
+    version_cmd=None,
+    *args,
+):
     """
     Try to install a wheel with no-deps and if there are no broken dependencies, pass it.
     If there are broken dependencies, try to install it with constraints.
     """
+    resp = ""
+    package_name, extra = split_package_name_and_extra(package_name)
     if local:
-        package_name, extra = split_package_name_and_extra(package_name)
         try:
             wheel = glob.glob(
                 f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
@@ -133,26 +156,20 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
             raise
         to_install = wheel + extra
     else:
-        to_install = package_name
-    try:
-        # check if the wheel is already installed
-        wheel_metadata = pip("show", package_name.split("==")[0])
-        # if wheel is already installed, save version to revert upgrade if constraints fail
-        version = wheel_metadata.split("Version:")[1].split("\n")[0].strip()
-    except Exception:
-        # wheel is not installed
-        version = None
+        to_install = (
+            package_name + version_cmd
+            if version_cmd is not None
+            else package_name + extra
+        )
+
+    version = is_package_already_installed(package_name)
 
     if cloudsmith_url is not None:
-        pip(
-            "install",
-            "--no-deps",
-            to_install,
-            "--index-url",
-            cloudsmith_url,
+        resp = pip(
+            "install", "--no-deps", to_install, "--index-url", cloudsmith_url, *args
         )
     else:
-        pip("install", "--no-deps", to_install)
+        resp = pip("install", "--no-deps", to_install, *args)
 
     try:
         pip("check")
@@ -160,26 +177,56 @@ def install_wheel(package_name, cloudsmith_url=None, local=False, wheels_path=No
         # try to install with constraints
         constraints_file_path = get_constraints_file_path(package_name)
         try:
-            install_with_constraints(
-                to_install, constraints_file_path, cloudsmith_url, local, wheels_path
+            resp = install_with_constraints(
+                to_install,
+                constraints_file_path,
+                cloudsmith_url,
+                local,
+                wheels_path,
+                *args,
             )
         except:
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
                 package_name = package_name.split("==")[0]
+                reinstall_args = [
+                    "install",
+                    "--no-deps",
+                    f"{package_name}=={version}",
+                ]
                 if local:
-                    pip(
-                        "install",
-                        "--no-deps",
-                        f"{package_name}=={version}",
-                        "--find-links",
-                        wheels_path,
-                    )
+                    reinstall_args.extend(["--find-links", wheels_path])
                 else:
-                    pip("install", "--no-deps", f"{package_name}=={version}")
+                    if cloudsmith_url:
+                        reinstall_args.extend(["--index-url", cloudsmith_url])
+                pip(*reinstall_args)
             else:
                 raise
+    return resp
+
+
+def is_cloudsmith_url_valid(cloudsmith_url):
+    response = requests.get(cloudsmith_url)
+    if response.status_code != 200:
+        raise Exception(
+            f"Failed to reach cloudsmith. Provided invalid URL: {cloudsmith_url}"
+        )
+
+
+def is_package_already_installed(package):
+    results = pip("list", "--format", "json")
+    parsed_results = json.loads(results)
+    package = package.split("==")[0] if "==" in package else package
+    found_package = [
+        (element["name"], element["version"])
+        for element in parsed_results
+        if element["name"] == package
+    ]
+    if found_package:
+        _, version = found_package.pop()
+        return version
+    return None
 
 
 def upgrade_from_local_wheel(
@@ -204,36 +251,36 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
     """
     attempt to install a specific version of the given package
     """
+    resp = ""
     try:
-        resp = ""
-        # constraints_file_path = install_with_no_deps(f'{package_install_cmd}=={version}')
-        # install_with_constraints(f'{package_install_cmd}=={version}', constraints_file_path)
-        install_wheel(f"{package_install_cmd}=={version}", cloudsmith_url)
-    except Exception:
+        resp = install_wheel(package_install_cmd, cloudsmith_url, version_cmd=version)
+    except Exception as e:
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
-        return False
-    return "Successfully installed" in resp
+        return False, str(e)
+    return "Successfully installed" in resp, resp
 
 
-def attempt_upgrade(package_install_cmd):
+def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     """
     attempt to upgrade a packgage with the given package_install_cmd.
     return True if it was upgraded.
     """
     pip_config = pip("config", "list")
     pip_args = []
-    match = development_index_re.search(pip_config)
+    match = development_index_re.search(pip_config) or "--pre" in str(args)
     if match:
         pip_args.append("--pre")
+    pip_args.append("--upgrade")
+    args = tuple(arg for arg in pip_args)
 
-    resp = pip("install", *pip_args, "--upgrade", package_install_cmd)
+    resp = install_wheel(package_install_cmd, cloudsmith_url, False, None, None, *args)
     was_upgraded = "Requirement already up-to-date" not in resp
     if was_upgraded:
         logging.info('"%s" package was upgraded.', package_install_cmd)
     else:
         logging.info('"%s" package was already up-to-date.', package_install_cmd)
-    return was_upgraded
+    return was_upgraded, resp
 
 
 def reload_uwsgi_app(package_name):
@@ -419,6 +466,11 @@ parser.add_argument(
     + 'These variables should be named "UPDATE_PACKAGE_NAME"',
 )
 parser.add_argument("--log-location", help="Specifies where to store the log file")
+parser.add_argument(
+    "--format-output",
+    action="store_true",
+    help="Determines whether output of upgrade will be a JSON text response containing success and response",
+)
 
 
 def upgrade_python_package(
@@ -432,37 +484,53 @@ def upgrade_python_package(
     force=False,
     log_location=None,
     update_from_local_wheels=None,
+    format_output=False,
     *vars,
 ):
-    if test:
+    success = False
+    response_err = ""
+    try:
+        if test:
+            logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
+        else:
+            log_location = log_location or "/var/log/upgrade_python_package.log"
+            logging.basicConfig(
+                filename=log_location,
+                level=logging.WARNING,
+                format="%(asctime)s %(message)s",
+            )
+        if cloudsmith_url:
+            is_cloudsmith_url_valid(cloudsmith_url)
+        wheels_path = wheels_path or "/vagrant/wheels"
+        if update_from_local_wheels:
+            upgrade_from_local_wheel(
+                package,
+                skip_post_install,
+                wheels_path=wheels_path,
+                cloudsmith_url=cloudsmith_url,
+                *vars,
+            )
+        elif should_run_initial_post_install:
+            run_initial_post_install(package, *vars)
+        else:
+            success, response_err = upgrade_and_run(
+                package,
+                force,
+                skip_post_install,
+                version,
+                cloudsmith_url,
+                *vars,
+            )
+    except Exception as e:
+        response_err += str(e)
+    if format_output:
+        while len(logging.root.handlers) > 0:
+            logging.root.removeHandler(logging.root.handlers[-1])
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-    else:
-        log_location = log_location or "/var/log/upgrade_python_package.log"
-        logging.basicConfig(
-            filename=log_location,
-            level=logging.WARNING,
-            format="%(asctime)s %(message)s",
-        )
-    wheels_path = wheels_path or "/vagrant/wheels"
-    if update_from_local_wheels:
-        upgrade_from_local_wheel(
-            package,
-            skip_post_install,
-            wheels_path=wheels_path,
-            cloudsmith_url=cloudsmith_url,
-            *vars,
-        )
-    elif should_run_initial_post_install:
-        run_initial_post_install(package, *vars)
-    else:
-        upgrade_and_run(
-            package,
-            force,
-            skip_post_install,
-            version,
-            cloudsmith_url,
-            *vars,
-        )
+        response = json.dumps({"success": success, "responseError": response_err})
+        logging.info(response)
+        print(response)
+
 
 def main():
     parsed_args = parser.parse_args()
@@ -476,6 +544,7 @@ def main():
     force = parsed_args.force
     should_run_initial_post_install = parsed_args.run_initial_post_install
     version = parsed_args.version
+    format_output = parsed_args.format_output
     upgrade_python_package(
         package,
         wheels_path,
@@ -487,8 +556,10 @@ def main():
         force,
         log_location,
         update_from_local_wheels,
+        format_output,
         *parsed_args.vars,
     )
+
 
 if __name__ == "__main__":
     main()
