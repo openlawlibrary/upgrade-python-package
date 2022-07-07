@@ -537,6 +537,8 @@ def upgrade_python_package(
                 *vars,
             )
     except Exception as e:
+        if not format_output:
+            raise e
         response_err += str(e)
     if format_output:
         while len(logging.root.handlers) > 0:
