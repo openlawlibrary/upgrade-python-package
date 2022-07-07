@@ -273,10 +273,15 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
 
 def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     """
-    attempt to upgrade a packgage with the given package_install_cmd.
+    Attempt to upgrade a package with the given package_install_cmd.
     return True if it was upgraded.
     """
-    pip_config = pip("config", "list")
+    try:
+        pip_config = pip("config", "list")
+    except subprocess.CalledProcessError as e:
+        logging.warning("config command not found.")
+        pip_config = ""
+
     pip_args = []
     match = development_index_re.search(pip_config) or "--pre" in str(args)
     if match:
