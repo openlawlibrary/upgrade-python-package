@@ -216,7 +216,12 @@ def is_cloudsmith_url_valid(cloudsmith_url):
 
 def is_package_already_installed(package):
     results = pip("list", "--format", "json")
-    parsed_results = json.loads(results)
+    try:
+        decoder = json.JSONDecoder()
+        parsed_results, index = decoder.raw_decode(results)
+    except json.JSONDecodeError as e:
+        logging.error(f"Error occurred while decoding pip list at ${index} index.")
+        raise e
     package = package.split("==")[0] if "==" in package else package
     found_package = [
         (element["name"], element["version"])
@@ -226,6 +231,7 @@ def is_package_already_installed(package):
     if found_package:
         _, version = found_package.pop()
         return version
+    logging.warning(f"Package not found: ${package}")
     return None
 
 
