@@ -1,1 +1,2 @@
-Pillow==9.1.1
+Pillow==6.2.2
+contextvars==2.4

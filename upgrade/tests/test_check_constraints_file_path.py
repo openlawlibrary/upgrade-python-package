@@ -11,7 +11,7 @@ from .conftest import VENV_PATH, install_local_package
         (
             "oll_dependency1-2.0.1-py2.py3-none-any.whl",
             "oll-dependency1",
-            ["Pillow==9.1.1"],
+            ["Pillow==6.2.2", "contextvars==2.4"],
         ),
         (
             "oll_dependency2-2.0.1-py2.py3-none-any.whl",
@@ -24,7 +24,8 @@ from .conftest import VENV_PATH, install_local_package
             [
                 "defusedxml==0.7.1",
                 "colorama==0.4.4",
-                "Pillow==9.1.1",
+                "Pillow==6.2.2",
+                "contextvars==2.4",
             ],
         ),
     ],
