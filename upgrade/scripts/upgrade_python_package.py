@@ -8,8 +8,9 @@ import glob
 import argparse
 from importlib import util
 from pathlib import Path
-import requests
 import site
+
+from upgrade.scripts.exceptions import PipFormatDecodeFailed
 
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
@@ -162,7 +163,15 @@ def install_wheel(
             else package_name + extra
         )
 
-    version = is_package_already_installed(package_name)
+    try:
+        version = is_package_already_installed(package_name)
+    except PipFormatDecodeFailed as e:
+        msg = (
+            "Something went wrong with pip.\n"
+            "You should consider upgrading your pip by running: 'python -m pip install --upgrade pip' command. \n"
+        )
+        msg += str(e)
+        raise msg
 
     if cloudsmith_url is not None:
         resp = pip(
@@ -207,6 +216,11 @@ def install_wheel(
 
 
 def is_cloudsmith_url_valid(cloudsmith_url):
+    try:
+        import requests
+    except ImportError:
+        logging.error("Module 'requests' not found. Could not validate cloudsmith url.")
+        return None
     response = requests.get(cloudsmith_url)
     if response.status_code != 200:
         raise Exception(
@@ -216,7 +230,13 @@ def is_cloudsmith_url_valid(cloudsmith_url):
 
 def is_package_already_installed(package):
     results = pip("list", "--format", "json")
-    parsed_results = json.loads(results)
+    try:
+        decoder = json.JSONDecoder()
+        parsed_results, _ = decoder.raw_decode(results)
+    except json.JSONDecodeError:
+        msg = f"Error occurred while decoding pip list to json"
+        logging.error(msg)
+        raise PipFormatDecodeFailed(msg)
     package = package.split("==")[0] if "==" in package else package
     found_package = [
         (element["name"], element["version"])
@@ -226,6 +246,7 @@ def is_package_already_installed(package):
     if found_package:
         _, version = found_package.pop()
         return version
+    logging.info(f"Package not found: ${package}")
     return None
 
 
@@ -263,10 +284,15 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
 
 def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     """
-    attempt to upgrade a packgage with the given package_install_cmd.
+    Attempt to upgrade a package with the given package_install_cmd.
     return True if it was upgraded.
     """
-    pip_config = pip("config", "list")
+    try:
+        pip_config = pip("config", "list")
+    except subprocess.CalledProcessError as e:
+        logging.warning("config command not found.")
+        pip_config = ""
+
     pip_args = []
     match = development_index_re.search(pip_config) or "--pre" in str(args)
     if match:
@@ -522,6 +548,8 @@ def upgrade_python_package(
                 *vars,
             )
     except Exception as e:
+        if not format_output:
+            raise e
         response_err += str(e)
     if format_output:
         while len(logging.root.handlers) > 0:
