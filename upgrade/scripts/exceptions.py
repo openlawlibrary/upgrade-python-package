@@ -1,0 +1,2 @@
+class PipFormatDecodeFailed(Exception):
+    pass

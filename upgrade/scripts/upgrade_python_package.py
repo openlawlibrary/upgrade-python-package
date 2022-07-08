@@ -10,6 +10,8 @@ from importlib import util
 from pathlib import Path
 import site
 
+from upgrade.scripts.exceptions import PipFormatDecodeFailed
+
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
@@ -161,7 +163,15 @@ def install_wheel(
             else package_name + extra
         )
 
-    version = is_package_already_installed(package_name)
+    try:
+        version = is_package_already_installed(package_name)
+    except PipFormatDecodeFailed as e:
+        msg = (
+            "Something went wrong with pip.\n"
+            "You should consider upgrading your pip by running: 'python -m pip install --upgrade pip' command. \n"
+        )
+        msg += str(e)
+        raise msg
 
     if cloudsmith_url is not None:
         resp = pip(
@@ -224,8 +234,9 @@ def is_package_already_installed(package):
         decoder = json.JSONDecoder()
         parsed_results, index = decoder.raw_decode(results)
     except json.JSONDecodeError as e:
-        logging.error(f"Error occurred while decoding pip list at ${index} index.")
-        raise e
+        msg = f"Error occurred while decoding pip list at ${index} index."
+        logging.error(msg)
+        raise PipFormatDecodeFailed(msg)
     package = package.split("==")[0] if "==" in package else package
     found_package = [
         (element["name"], element["version"])
@@ -235,7 +246,7 @@ def is_package_already_installed(package):
     if found_package:
         _, version = found_package.pop()
         return version
-    logging.warning(f"Package not found: ${package}")
+    logging.info(f"Package not found: ${package}")
     return None
 
 
