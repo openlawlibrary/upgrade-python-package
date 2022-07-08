@@ -232,9 +232,9 @@ def is_package_already_installed(package):
     results = pip("list", "--format", "json")
     try:
         decoder = json.JSONDecoder()
-        parsed_results, index = decoder.raw_decode(results)
-    except json.JSONDecodeError as e:
-        msg = f"Error occurred while decoding pip list at ${index} index."
+        parsed_results, _ = decoder.raw_decode(results)
+    except json.JSONDecodeError:
+        msg = f"Error occurred while decoding pip list to json"
         logging.error(msg)
         raise PipFormatDecodeFailed(msg)
     package = package.split("==")[0] if "==" in package else package
