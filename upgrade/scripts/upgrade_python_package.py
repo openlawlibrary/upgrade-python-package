@@ -18,7 +18,13 @@ PYTHON_VERSION_RE = r"^python3.[0-9]+$"
 
 
 def upgrade_and_run(
-    package_install_cmd, force, skip_post_install, version, cloudsmith_url=None, *args
+    package_install_cmd,
+    force,
+    skip_post_install,
+    version,
+    cloudsmith_url=None,
+    update_all=False,
+    *args,
 ):
     """
     If the package needs to be upgraded upgrade it and then
@@ -38,12 +44,12 @@ def upgrade_and_run(
             "Trying to install version %s of package %s", version, package_name
         )
         was_updated, response_err = attempt_to_install_version(
-            package_install_cmd, version, cloudsmith_url
+            package_install_cmd, version, cloudsmith_url, update_all
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
         was_updated, response_err = attempt_upgrade(
-            package_install_cmd, cloudsmith_url, *args
+            package_install_cmd, cloudsmith_url, update_all, *args
         )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
@@ -139,6 +145,7 @@ def install_wheel(
     local=False,
     wheels_path=None,
     version_cmd=None,
+    update_all=False,
     *args,
 ):
     """
@@ -173,12 +180,15 @@ def install_wheel(
         msg += str(e)
         raise msg
 
+    install_args = ["install", to_install]
+
     if cloudsmith_url is not None:
-        resp = pip(
-            "install", "--no-deps", to_install, "--index-url", cloudsmith_url, *args
-        )
-    else:
-        resp = pip("install", "--no-deps", to_install, *args)
+        install_args.extend(["--index-url", cloudsmith_url])
+    if not update_all:
+        install_args.extend(["--no-deps"])
+    if args:
+        install_args.extend(args)
+    pip(*install_args)
 
     try:
         pip("check")
@@ -251,12 +261,21 @@ def is_package_already_installed(package):
 
 
 def upgrade_from_local_wheel(
-    package_install_cmd, skip_post_install, *args, cloudsmith_url=None, wheels_path=None
+    package_install_cmd,
+    skip_post_install,
+    *args,
+    cloudsmith_url=None,
+    wheels_path=None,
+    update_all=False,
 ):
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     try:
         install_wheel(
-            package_install_cmd, cloudsmith_url, local=True, wheels_path=wheels_path
+            package_install_cmd,
+            cloudsmith_url,
+            local=True,
+            wheels_path=wheels_path,
+            update_all=update_all,
         )
     except Exception:
         raise
@@ -268,13 +287,20 @@ def upgrade_from_local_wheel(
 development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
 
 
-def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None):
+def attempt_to_install_version(
+    package_install_cmd, version, cloudsmith_url=None, update_all=False
+):
     """
     attempt to install a specific version of the given package
     """
     resp = ""
     try:
-        resp = install_wheel(package_install_cmd, cloudsmith_url, version_cmd=version)
+        resp = install_wheel(
+            package_install_cmd,
+            cloudsmith_url,
+            version_cmd=version,
+            update_all=update_all,
+        )
     except Exception as e:
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
@@ -282,7 +308,7 @@ def attempt_to_install_version(package_install_cmd, version, cloudsmith_url=None
     return "Successfully installed" in resp, resp
 
 
-def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
+def attempt_upgrade(package_install_cmd, cloudsmith_url=None, update_all=False, *args):
     """
     Attempt to upgrade a package with the given package_install_cmd.
     return True if it was upgraded.
@@ -300,7 +326,9 @@ def attempt_upgrade(package_install_cmd, cloudsmith_url=None, *args):
     pip_args.append("--upgrade")
     args = tuple(arg for arg in pip_args)
 
-    resp = install_wheel(package_install_cmd, cloudsmith_url, False, None, None, *args)
+    resp = install_wheel(
+        package_install_cmd, cloudsmith_url, False, None, None, update_all, *args
+    )
     was_upgraded = "Requirement already up-to-date" not in resp
     if was_upgraded:
         logging.info('"%s" package was upgraded.', package_install_cmd)
@@ -443,7 +471,7 @@ parser.add_argument(
     "--update-from-local-wheels",
     action="store_true",
     help="Determines whether to install packages from local wheels, which "
-    + "are expected to be in /vagrat/wheels directory",
+    + "are expected to be in /vagrant/wheels directory",
 )
 parser.add_argument(
     "--force",
@@ -497,6 +525,11 @@ parser.add_argument(
     action="store_true",
     help="Determines whether output of upgrade will be a JSON text response containing success and response",
 )
+parser.add_argument(
+    "--update-all",
+    action="store_true",
+    help="Indicates that all packages should be updated",
+)
 
 
 def upgrade_python_package(
@@ -511,6 +544,7 @@ def upgrade_python_package(
     log_location=None,
     update_from_local_wheels=None,
     format_output=False,
+    update_all=False,
     *vars,
 ):
     success = False
@@ -534,6 +568,7 @@ def upgrade_python_package(
                 skip_post_install,
                 wheels_path=wheels_path,
                 cloudsmith_url=cloudsmith_url,
+                update_all=update_all,
                 *vars,
             )
         elif should_run_initial_post_install:
@@ -545,6 +580,7 @@ def upgrade_python_package(
                 skip_post_install,
                 version,
                 cloudsmith_url,
+                update_all,
                 *vars,
             )
     except Exception as e:
@@ -573,6 +609,7 @@ def main():
     should_run_initial_post_install = parsed_args.run_initial_post_install
     version = parsed_args.version
     format_output = parsed_args.format_output
+    update_all = parsed_args.update_all
     upgrade_python_package(
         package,
         wheels_path,
@@ -585,6 +622,7 @@ def main():
         log_location,
         update_from_local_wheels,
         format_output,
+        update_all,
         *parsed_args.vars,
     )
 
