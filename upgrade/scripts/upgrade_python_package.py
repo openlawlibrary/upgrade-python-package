@@ -187,7 +187,7 @@ def install_wheel(
     if not update_all:
         install_args.extend(["--no-deps"])
     if args:
-        install_args.extend(*args)
+        install_args.extend(args)
     pip(*install_args)
 
     try:
