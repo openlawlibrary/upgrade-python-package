@@ -89,6 +89,14 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
     return None
 
 
+def get_log_file_path():
+    """Get the path to the log file."""
+    try:
+        return Path(logging.getLoggerClass().root.handlers[0].baseFilename)
+    except (AttributeError, IndexError):
+        return None
+
+
 def install_with_constraints(
     wheel_path,
     constraints_file_path,
@@ -190,9 +198,8 @@ def install_wheel(
         install_args.extend(["--no-deps"])
     if args:
         install_args.extend(args)
-    pip(*install_args)
-
     try:
+        pip(*install_args)
         pip("check")
     except:
         # try to install with constraints
@@ -207,16 +214,21 @@ def install_wheel(
                 *args,
             )
         except:
-            breakpoint()
             if slack_webhook_url is not None:
                 try:
+                    environment = (
+                        "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
+                    )
+                    log_filepath = get_log_file_path().as_posix() or "log file"
                     send_slack_notification(
                         f"Failed to upgrade package {package_name}",
-                        f"For more details, please audit {{log}}.", # TODO: log file path
+                        f"{environment.upper()} - For more details, please audit {str(log_filepath)}.",
                         slack_webhook_url,
                     )
                 except Exception as e:
-                    logging.error(f"Failed to send slack notification due to error: {e}")
+                    logging.error(
+                        f"Failed to send slack notification due to error: {e}"
+                    )
                     raise
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
@@ -249,6 +261,18 @@ def is_cloudsmith_url_valid(cloudsmith_url):
         raise Exception(
             f"Failed to reach cloudsmith. Provided invalid URL: {cloudsmith_url}"
         )
+
+
+def is_development_cloudsmith(cloudsmith_url):
+    if cloudsmith_url is not None:
+        return development_url_re.search(cloudsmith_url) is not None
+    try:
+        pip_config = pip("config", "list")
+    except subprocess.CalledProcessError as e:
+        logging.warning("config command not found.")
+        pip_config = ""
+
+    return development_index_re.search(pip_config) is not None
 
 
 def is_package_already_installed(package):
@@ -297,6 +321,7 @@ def upgrade_from_local_wheel(
         try_running_module(module_name, *args)
 
 
+development_url_re = re.compile(r"([^']+development[^']+)")
 development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
 
 
@@ -326,26 +351,33 @@ def attempt_to_install_version(
     return "Successfully installed" in resp, resp
 
 
-def attempt_upgrade(package_install_cmd, cloudsmith_url=None, update_all=False, slack_webhook_url=None, *args):
+def attempt_upgrade(
+    package_install_cmd,
+    cloudsmith_url=None,
+    update_all=False,
+    slack_webhook_url=None,
+    *args,
+):
     """
     Attempt to upgrade a package with the given package_install_cmd.
     return True if it was upgraded.
     """
-    try:
-        pip_config = pip("config", "list")
-    except subprocess.CalledProcessError as e:
-        logging.warning("config command not found.")
-        pip_config = ""
-
     pip_args = []
-    match = development_index_re.search(pip_config) or "--pre" in str(args)
+    match = is_development_cloudsmith(cloudsmith_url) or "--pre" in str(args)
     if match:
         pip_args.append("--pre")
     pip_args.append("--upgrade")
     args = tuple(arg for arg in pip_args)
 
     resp = install_wheel(
-        package_install_cmd, cloudsmith_url, False, None, None, update_all, slack_webhook_url, *args
+        package_install_cmd,
+        cloudsmith_url,
+        False,
+        None,
+        None,
+        update_all,
+        slack_webhook_url,
+        *args,
     )
     was_upgraded = "Requirement already up-to-date" not in resp
     if was_upgraded:
@@ -564,7 +596,7 @@ def upgrade_python_package(
     skip_post_install=False,
     should_run_initial_post_install=False,
     force=False,
-    log_location="./test.log", #TODO: fix
+    log_location=None,
     update_from_local_wheels=None,
     format_output=False,
     update_all=False,
@@ -606,7 +638,8 @@ def upgrade_python_package(
                 version,
                 cloudsmith_url,
                 update_all,
-                slack_webhook_url * vars,
+                slack_webhook_url,
+                *vars,
             )
     except Exception as e:
         if not format_output:
