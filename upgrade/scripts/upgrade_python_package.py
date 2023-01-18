@@ -605,8 +605,10 @@ parser.add_argument(
 )
 parser.add_argument(
     "--slack-webhook-url",
-    action="store_true",
-    help="Indicates that all failed updates should be sent to slack",
+    action="store",
+    type=str,
+    default=None,
+    help="Slack webhook url string for sending slack notifications on failed upgrade",
 )
 
 
