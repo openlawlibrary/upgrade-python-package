@@ -97,6 +97,28 @@ def get_log_file_path():
         return None
 
 
+def get_server_metadata():
+    """Get the server metadata in format user@ipaddress"""
+    user = os.getlogin()
+
+    def _get_public_ip_address():
+        import urllib.request
+
+        return urllib.request.urlopen("https://ident.me").read().decode("utf8")
+
+    def _get_private_ip_address():
+        import socket
+
+        return socket.gethostbyname(socket.gethostname())
+
+    try:
+        ip = _get_public_ip_address()
+    except Exception:
+        ip = _get_private_ip_address()
+
+    return f"{user}@{ip}"
+
+
 def install_with_constraints(
     wheel_path,
     constraints_file_path,
@@ -220,9 +242,10 @@ def install_wheel(
                         "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
                     )
                     log_filepath = get_log_file_path().as_posix() or "log file"
+                    server_metadata = get_server_metadata()
                     send_slack_notification(
                         f"Failed to upgrade package {package_name}",
-                        f"{environment.upper()} - For more details, please audit {str(log_filepath)}.",
+                        f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata}).",
                         slack_webhook_url,
                     )
                 except Exception as e:
