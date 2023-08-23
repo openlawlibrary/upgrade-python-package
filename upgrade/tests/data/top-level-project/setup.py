@@ -12,7 +12,6 @@ if __name__ == "__main__":
         install_requires=[
             f"oll-dependency1=={version}",
             f"oll-dependency2=={version}",
-            "defusedxml",
         ],
         data_files=[
             (

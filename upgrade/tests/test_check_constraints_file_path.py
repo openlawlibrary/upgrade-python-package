@@ -11,20 +11,19 @@ from .conftest import VENV_PATH, install_local_package
         (
             "oll_dependency1-2.0.1-py2.py3-none-any.whl",
             "oll-dependency1",
-            ["Pillow==9.1.1"],
+            ["mock-dependency==0.0.1"],
         ),
         (
             "oll_dependency2-2.0.1-py2.py3-none-any.whl",
             "oll-dependency2",
-            ["colorama==0.4.4"],
+            ["mock-dependency==0.0.2"],
         ),
         (
             "oll_test_top_level-2.0.1-py2.py3-none-any.whl",
             "oll-test-top-level",
             [
-                "defusedxml==0.7.1",
-                "colorama==0.4.4",
-                "Pillow==9.1.1",
+                "dependency1==2.0.1",
+                "dependency2==2.0.1",
             ],
         ),
     ],
