@@ -1,4 +1,4 @@
-from upgrade.scripts.upgrade_python_package import is_cloudsmith_url_valid
+from upgrade.scripts.validations import is_cloudsmith_url_valid
 try:
     from contextlib import nullcontext as does_not_raise
 except ImportError:

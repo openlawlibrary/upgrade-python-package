@@ -12,6 +12,7 @@ from pathlib import Path
 
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
 from upgrade.scripts.slack import send_slack_notification
+from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
@@ -271,19 +272,6 @@ def install_wheel(
             else:
                 raise
     return resp
-
-
-def is_cloudsmith_url_valid(cloudsmith_url):
-    try:
-        import requests
-    except ImportError:
-        logging.error("Module 'requests' not found. Could not validate cloudsmith url.")
-        return None
-    response = requests.get(cloudsmith_url)
-    if response.status_code != 200:
-        raise Exception(
-            f"Failed to reach cloudsmith. Provided invalid URL: {cloudsmith_url}"
-        )
 
 
 def is_development_cloudsmith(cloudsmith_url):
