@@ -1,6 +1,6 @@
 from mock import patch
 from upgrade.scripts.upgrade_python_package import try_running_module
-from .conftest import install_local_package
+from upgrade.tests.upgrade_package.conftest import install_local_package
 
 
 def test_try_running_module_expect_success_and_print(capsys, mock_find_spec):

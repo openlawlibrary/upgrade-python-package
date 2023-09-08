@@ -1,5 +1,5 @@
 from upgrade.scripts.upgrade_python_package import is_package_already_installed
-from upgrade.tests.conftest import install_local_package
+from upgrade.tests.upgrade_package.conftest import install_local_package
 import pytest
 
 

@@ -9,7 +9,7 @@ from upgrade.scripts.upgrade_python_package import pip, run
 
 CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)
 
-REPOSITORY_WHEELS_PATH = Path(__file__).parent / "repository"
+REPOSITORY_WHEELS_PATH = Path(__file__).parent.parent / "repository"
 VENV_PATH = Path(__file__).parent / "venv"
 original_executable = sys.executable
 

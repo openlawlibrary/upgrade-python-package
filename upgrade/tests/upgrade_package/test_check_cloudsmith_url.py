@@ -3,7 +3,7 @@ try:
     from contextlib import nullcontext as does_not_raise
 except ImportError:
     pass
-from .conftest import CLOUDSMITH_URL
+from upgrade.tests.upgrade_package.conftest import CLOUDSMITH_URL
 import pytest
 import sys
 
