@@ -2,10 +2,11 @@ on: [push, pull_request]
 
 jobs:
   tests:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        os: [macos-12, windows-2022, ubuntu-20.04]
         python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
