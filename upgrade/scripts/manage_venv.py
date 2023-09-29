@@ -3,7 +3,12 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
+from urllib.parse import urljoin
+
+import lxml.etree as et
+import requests
+from pip._vendor.packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
 from upgrade.scripts.upgrade_python_package import pip, run
@@ -94,6 +99,59 @@ def create_venv(envs_home: str, requirements: str) -> str:
     return py_executable
 
 
+def _filter_versions(
+    requirements_obj: Any, parsed_packages_versions: List[Any]
+) -> List[str]:
+    """Returns a list of versions that are compatible with the `SpecifierSet`.
+
+    Example:
+        SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14", "2.5.15"]
+    Example 2:
+        SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14"]
+    """
+    return [
+        str(version)
+        for version in requirements_obj.specifier.filter(parsed_packages_versions)
+    ]
+
+
+def get_compatible_versions_from_package_index_html(
+    requirements_obj: Any, package_index_html: str
+) -> List[str]:
+    """Parse the package index HTML and return a list of versions that are compatible"""
+    tree = et.HTML(package_index_html)
+    anchor_tags_el = tree.xpath("//a")
+    parsed_packages_versions = [
+        parse_wheel_filename(tag_el.text)[1] for tag_el in anchor_tags_el
+    ]
+    return _filter_versions(requirements_obj, parsed_packages_versions)
+
+
+def determine_compatible_upgrade_version(
+    requirements_obj: Any, cloudsmith_url: str
+) -> Optional[List[str]]:
+    package_name = requirements_obj.name
+
+    package_index_url = urljoin(cloudsmith_url, package_name)
+    package_full_index_url = (
+        package_index_url
+        if package_index_url.endswith("/")
+        else package_index_url + "/"
+    )
+    package_index_html = requests.get(package_full_index_url).text
+
+    compatible_versions = get_compatible_versions_from_package_index_html(
+        requirements_obj, package_index_html
+    )
+    if not compatible_versions or len(compatible_versions) == 1:
+        """No compatible versions to upgrade"""
+        return None
+
+    return sorted(compatible_versions, reverse=True)[0]
+
+
 def _venv_exists(envs_home: str, requirements: str) -> bool:
     return venv_path(envs_home, requirements).exists()
 
@@ -145,6 +203,16 @@ def build_and_upgrade_venv(
 
     requirements_obj = _to_requirements_obj(requirements)
 
+    version = determine_compatible_upgrade_version(requirements_obj, cloudsmith_url)
+
+    if not should_upgrade_venv:
+        logging.info("Virtualenv is up to date. Skipping upgrade.")
+        return py_executable
+
+    upgrade_venv(py_executable, requirements)
+    # else:
+    # determine whether update is necessary
+    # update
     return py_executable
 
 
