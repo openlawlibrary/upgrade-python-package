@@ -1,9 +1,40 @@
 import argparse
 import logging
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any, List
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
+from upgrade.scripts.upgrade_python_package import pip, run
+from upgrade.scripts.utils import create_directory, platform_specific_python_path
 from upgrade.scripts.validations import is_cloudsmith_url_valid
+
+SYSTEM_DEPENDENCIES = ["pip", "setuptools"]
+
+
+def venv(*args, **kwargs):
+    try:
+        return run(*((sys.executable, "-m", "venv") + args), **kwargs)
+    except subprocess.CalledProcessError as e:
+        logging.error("Error occurred while creating venv %s", str(e))
+        raise e
+
+
+def upgrade_system_dependencies(venv_executable: str, dependencies: List[str]) -> None:
+    for dependency in dependencies:
+        try:
+            pip("install", "--upgrade", f"{dependency}", executable=venv_executable)
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                f"Error occurred while upgrading running {venv_executable}"
+                + f"pip upgrade {dependency} {str(e)}",
+            )
+            raise e
+
+
+def upgrade_venv(venv_executable, requirements):
+    pass
 
 
 def parse_requirements_txt(
@@ -39,6 +70,84 @@ def parse_requirements_txt(
     )
 
 
+def venv_path(envs_home: str, requirements: str) -> Path:
+    """Get the path to the virtualenv directory.
+    Example:
+    If requirements.txt contains:
+        ```
+        dependency==2.0.0 # oll.dependency.module.*
+        ```
+    Then the name of expected virtualenv directory is `<VENV_PATH> / dependency==2.0.0`
+    """
+    return Path(envs_home) / requirements
+
+
+def create_venv(envs_home: str, requirements: str) -> str:
+    """ """
+    env_path = venv_path(envs_home, requirements)
+    create_directory(env_path)
+    venv(*[str(env_path)])
+    py_executable = platform_specific_python_path(str(env_path))
+
+    upgrade_system_dependencies(py_executable, SYSTEM_DEPENDENCIES)
+
+    return py_executable
+
+
+def _venv_exists(envs_home: str, requirements: str) -> bool:
+    return venv_path(envs_home, requirements).exists()
+
+
+def _get_venv_executable(envs_home: str, requirements: str) -> str:
+    return platform_specific_python_path(str(venv_path(envs_home, requirements)))
+
+
+def _to_requirements_obj(requirements: str) -> Any:
+    try:
+        """Recommended usage for >= Python 3.7
+        Note: a top-level `packaging` installation may be at a different version
+        than the packaging version which pip vendors and uses internally.
+        So, instead of using the top-level `packaging` module,
+        we import the vendored version. This way we guarantee
+        that the packaging APIs are matching pip's behavior exactly.
+        """
+        # TODO: can this work for Python 3.6 as well?
+        from pip._vendor.packaging.requirements import Requirement
+
+        return Requirement(requirements)
+    except ImportError:
+        """
+        Support for == Python 3.6
+        """
+        from pkg_resources import Requirement
+
+        return Requirement.parse(requirements)
+    except Exception as e:
+        logging.error(f"Error occurred while parsing requirements: {str(e)}")
+        raise e
+
+
+def build_and_upgrade_venv(
+    requirements: str,
+    envs_home: str,
+    should_upgrade_venv: bool,
+    cloudsmith_url: str,
+):
+    if not _venv_exists(envs_home, requirements):
+        should_upgrade_venv = True
+        logging.info("Requirements changed. Creating new virtualenv.")
+        py_executable = create_venv(envs_home, requirements)
+    else:
+        logging.info(
+            "Requirements did not change. Determining whether to upgrade virtualenv."
+        )
+        py_executable = _get_venv_executable(envs_home, requirements)
+
+    requirements_obj = _to_requirements_obj(requirements)
+
+    return py_executable
+
+
 
 def manage_venv(
     requirements_file=None,
@@ -62,6 +171,10 @@ def manage_venv(
             is_cloudsmith_url_valid(cloudsmith_url)
 
         requirements = parse_requirements_txt(requirements_file)
+
+        venv = build_and_upgrade_venv(
+            requirements, envs_home, auto_upgrade, cloudsmith_url
+        )
 
     except Exception as e:
         logging.error(e)
