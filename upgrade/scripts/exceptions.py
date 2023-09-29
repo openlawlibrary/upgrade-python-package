@@ -1,3 +1,7 @@
+class RequiredArgumentMissing(Exception):
+    pass
+
+
 class PipFormatDecodeFailed(Exception):
     pass
 
