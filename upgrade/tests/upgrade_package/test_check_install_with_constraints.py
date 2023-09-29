@@ -1,5 +1,5 @@
 import pytest
-import subprocess
+
 from upgrade.scripts.upgrade_python_package import install_with_constraints
 
 from .conftest import install_local_package
