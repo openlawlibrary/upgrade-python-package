@@ -16,7 +16,7 @@ def test_check_cloudsmith_url_where_url_is_invalid_expect_error():
     with pytest.raises(Exception) as e:
         cut(invalid_cloudsmith_url)
     assert (
-        f"Failed to reach cloudsmith. Provided invalid URL: {invalid_cloudsmith_url}"
+        f"'Failed to reach package index url. Provided invalid URL: {invalid_cloudsmith_url}"
         in str(e)
     )
 
