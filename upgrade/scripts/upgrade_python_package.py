@@ -17,7 +17,6 @@ from upgrade.scripts.validations import is_cloudsmith_url_valid
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
 
-
 def upgrade_and_run(
     package_install_cmd,
     force,
@@ -31,7 +30,7 @@ def upgrade_and_run(
     """
     If the package needs to be upgraded upgrade it and then
     run the package (`python -m <package_name>`).
-    We strip brackets before running the packag in case you
+    We strip brackets before running the package in case you
     are installing something like `pip package[env]`.
     Any post-install/post-upgrade functionality should go in
     that top-level module. Any args passed to this function
@@ -46,12 +45,20 @@ def upgrade_and_run(
             "Trying to install version %s of package %s", version, package_name
         )
         was_updated, response_err = attempt_to_install_version(
-            package_install_cmd, version, cloudsmith_url, update_all, slack_webhook_url
+            package_install_cmd,
+            version,
+            cloudsmith_url,
+            update_all,
+            slack_webhook_url,
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
         was_updated, response_err = attempt_upgrade(
-            package_install_cmd, cloudsmith_url, update_all, slack_webhook_url, *args
+            package_install_cmd,
+            cloudsmith_url,
+            update_all,
+            slack_webhook_url,
+            *args,
         )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
@@ -257,7 +264,7 @@ def install_wheel(
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
-                package_name = package_name.split("==")[0]
+                package_name = package_name.split("==")[0] # TODO: why ==?
                 reinstall_args = [
                     "install",
                     "--no-deps",
@@ -292,7 +299,7 @@ def is_package_already_installed(package):
         decoder = json.JSONDecoder()
         parsed_results, _ = decoder.raw_decode(results)
     except json.JSONDecodeError:
-        msg = f"Error occurred while decoding pip list to json"
+        msg = "Error occurred while decoding pip list to json"
         logging.error(msg)
         raise PipFormatDecodeFailed(msg)
     package = package.split("==")[0] if "==" in package else package
@@ -435,7 +442,7 @@ def run_python_module(module_name, *args, **kwargs):
     Run a python module using the python executable used to run this function
     """
     if not args and not kwargs:
-        # check for arguments stored in an environemtn variable UPDATE_MODULE_NAME
+        # check for arguments stored in an environment variable UPDATE_MODULE_NAME
         var_name = f"UPDATE_{module_name.upper()}"
         args = tuple(os.environ.get(var_name, "").split())
     logging.info("running %s python module", module_name)
@@ -444,7 +451,6 @@ def run_python_module(module_name, *args, **kwargs):
     except subprocess.CalledProcessError as e:
         logging.error("Error occurred while running module %s: %s", module_name, str(e))
         raise e
-
 
 def run_module_and_reload_uwsgi_app(module_name, *args):
     run_python_module(module_name, *args)
