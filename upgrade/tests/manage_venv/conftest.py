@@ -1,7 +1,7 @@
-import pytest
-
-from pathlib import Path
 from functools import wraps
+from pathlib import Path
+
+import pytest
 
 from upgrade.tests.utils import remove_directory
 
