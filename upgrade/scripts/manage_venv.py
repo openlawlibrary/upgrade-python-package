@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from urllib.parse import urljoin
 
 import lxml.etree as et
-import requests
+import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
