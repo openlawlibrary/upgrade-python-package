@@ -11,16 +11,32 @@ import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
-from upgrade.scripts.upgrade_python_package import pip, run
+from upgrade.scripts.upgrade_python_package import run
 from upgrade.scripts.utils import create_directory, platform_specific_python_path
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
-SYSTEM_DEPENDENCIES = ["pip", "setuptools"]
+SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
+
+
+def venv_pip(venv_executable, *args, **kwargs):
+    try:
+        return run(*((venv_executable, "-m", "pip") + args), **kwargs)
+    except subprocess.CalledProcessError as e:
+        logging.error("Error occurred while running pip in venv %s", str(e))
+        raise e
+
+
+def ensure_pip(venv_executable, *args, **kwargs):
+    try:
+        return run(*((venv_executable, "-m", "ensurepip") + args), **kwargs)
+    except subprocess.CalledProcessError as e:
+        logging.error("Error occurred while running pip in venv %s", str(e))
+        raise e
 
 
 def venv(*args, **kwargs):
     try:
-        return run(*((sys.executable, "-m", "venv") + args), **kwargs)
+        return run(*((sys.executable, "-m", "venv", "--without-pip") + args), **kwargs)
     except subprocess.CalledProcessError as e:
         logging.error("Error occurred while creating venv %s", str(e))
         raise e
@@ -29,16 +45,46 @@ def venv(*args, **kwargs):
 def upgrade_system_dependencies(venv_executable: str, dependencies: List[str]) -> None:
     for dependency in dependencies:
         try:
-            pip("install", "--upgrade", f"{dependency}", executable=venv_executable)
+            # # FIXME: for local testing
+            # if "upgrade-python-package" in dependency:
+            #     venv_pip(
+            #         venv_executable, "install", "-e", "D:\\OLL\\upgrade-python-package"
+            #     )
+            # else:
+                venv_pip(venv_executable, "install", "--upgrade", f"{dependency}")
         except subprocess.CalledProcessError as e:
             logging.error(
-                f"Error occurred while upgrading running {venv_executable}"
-                + f"pip upgrade {dependency} {str(e)}",
+                f"Error occurred while upgrading running pip upgrade {dependency} {str(e)}"
             )
             raise e
 
 
-def upgrade_venv(venv_executable, requirements):
+def upgrade_venv(
+    venv_executable: str, requirements_obj: Any, cloudsmith_url: str
+) -> None:
+    try:
+        res = run(
+            *(
+                (
+                    venv_executable,
+                    "-m",
+                    "upgrade.scripts.upgrade_python_package",
+                    requirements_obj.name,
+                    f"--cloudsmith-url={cloudsmith_url}",
+                    "--skip-post-install",
+                    f"--version={str(requirements_obj.specifier)}",
+                    "--test",
+                    "--format-output",
+                )
+            )
+        )
+        breakpoint()
+        print()
+    except Exception as e:
+        logging.error(
+            f"Error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
+        )
+        raise e
     pass
 
 
@@ -93,7 +139,7 @@ def create_venv(envs_home: str, requirements: str) -> str:
     create_directory(env_path)
     venv(*[str(env_path)])
     py_executable = platform_specific_python_path(str(env_path))
-
+    ensure_pip(py_executable)
     upgrade_system_dependencies(py_executable, SYSTEM_DEPENDENCIES)
 
     return py_executable
@@ -188,33 +234,42 @@ def _to_requirements_obj(requirements: str) -> Any:
 def build_and_upgrade_venv(
     requirements: str,
     envs_home: str,
-    should_upgrade_venv: bool,
+    auto_upgrade: bool,
     cloudsmith_url: str,
-):
+) -> str:
+    # two scenarios
+    # requirements changed, so have to update
+    # requirements did not change, have to determine if new version exists
+
     if not _venv_exists(envs_home, requirements):
-        should_upgrade_venv = True
+        # auto_upgrade = True # TODO: re-enable
         logging.info("Requirements changed. Creating new virtualenv.")
         py_executable = create_venv(envs_home, requirements)
     else:
-        logging.info(
-            "Requirements did not change. Determining whether to upgrade virtualenv."
-        )
         py_executable = _get_venv_executable(envs_home, requirements)
 
-    requirements_obj = _to_requirements_obj(requirements)
+        if not auto_upgrade:
+            logging.info(
+                f"Requirements did not change. Returning {envs_home}/{requirements} venv."
+            )
+            return py_executable
 
-    version = determine_compatible_upgrade_version(requirements_obj, cloudsmith_url)
+    if auto_upgrade:
+        requirements_obj = _to_requirements_obj(requirements)
 
-    if not should_upgrade_venv:
-        logging.info("Virtualenv is up to date. Skipping upgrade.")
-        return py_executable
+        # this check needs to be a separate CLI command
+        # TODO: what happens if the version is None but the package is not installed yet? e.g. ~=2.10.0
+        version = determine_compatible_upgrade_version(requirements_obj, cloudsmith_url)
 
-    upgrade_venv(py_executable, requirements)
-    # else:
-    # determine whether update is necessary
-    # update
+        if version is None:
+            logging.info(
+                f"Virtual environment {envs_home}/{requirements} is up to date. Skipping upgrade."
+            )
+            return py_executable
+
+        upgrade_venv(py_executable, requirements_obj, cloudsmith_url)
+
     return py_executable
-
 
 
 def manage_venv(
