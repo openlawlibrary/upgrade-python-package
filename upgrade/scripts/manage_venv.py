@@ -150,10 +150,12 @@ def _filter_versions(
 ) -> List[str]:
     """Returns a list of versions that are compatible with the `SpecifierSet`.
 
+    See https://packaging.pypa.io/en/latest/specifiers.html#specifiers for more details.
+
     Example:
         SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
         returns ["2.5.14", "2.5.15"]
-    Example 2:
+    or:
         SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
         returns ["2.5.14"]
     """
@@ -166,7 +168,8 @@ def _filter_versions(
 def get_compatible_versions_from_package_index_html(
     requirements_obj: Any, package_index_html: str
 ) -> List[str]:
-    """Parse the package index HTML and return a list of versions that are compatible"""
+    """Parse the package index HTML list of available packages
+    and return a list of package versions that are compatible"""
     tree = et.HTML(package_index_html)
     anchor_tags_el = tree.xpath("//a")
     parsed_packages_versions = [
@@ -325,10 +328,11 @@ parser.add_argument(
 )
 parser.add_argument(
     "--auto-upgrade",
-    action="store_false",
+    action="store_true",
     help="Whether to automatically install/upgrade the package or "
     + "notify the user that a new version is available",
 )
+parser.add_argument("--no-auto-upgrade", dest="auto-upgrade", action="store_false")
 parser.add_argument(
     "--cloudsmith-url",
     action="store",

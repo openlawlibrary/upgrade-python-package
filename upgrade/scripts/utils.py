@@ -15,9 +15,9 @@ def create_directory(path: Path) -> None:
 
 def platform_specific_python_path(venv_path: str) -> str:
     if is_windows():
-        return str(Path(venv_path, "Scripts", "python.exe"))
+        return str(Path(venv_path, "Scripts", "python.exe").absolute())
     else:
-        return str(Path(venv_path, "bin", "python"))
+        return str(Path(venv_path, "bin", "python").absolute())
 
 
 def is_windows() -> bool:
