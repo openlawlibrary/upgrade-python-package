@@ -1,9 +1,14 @@
 import pytest
 
+from upgrade.scripts.utils import is_windows
 from upgrade.scripts.manage_venv import build_and_upgrade_venv
 from pathlib import Path
 
-EXPECTED_FILES = ["pyvenv.cfg", "Scripts", "Lib"]
+EXPECTED_FILES = (
+    ["pyvenv.cfg", "Scripts", "Lib"]
+    if is_windows()
+    else ["pyvenv.cfg", "bin", "lib", "include"]
+)
 
 
 @pytest.mark.parametrize(
@@ -32,4 +37,4 @@ def test_create_venv_when_not_exists_expect_created(
 
     for file in EXPECTED_FILES:
         assert Path(venv_path, file).exists()
-    #confirm expected dependencies exist in venv
+    # confirm expected dependencies exist in venv

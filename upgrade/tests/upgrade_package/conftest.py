@@ -4,7 +4,7 @@ import pytest
 from mock import patch
 from pathlib import Path
 
-from upgrade.scripts.upgrade_python_package import pip, run
+from upgrade.scripts.upgrade_python_package import pip
 from ..conftest import VENV_PATH
 
 CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)
