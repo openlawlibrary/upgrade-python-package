@@ -30,11 +30,11 @@ def wheels_dir():
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_venv():
-    if not VENV_PATH.exists():
-        os.makedirs(VENV_PATH, exist_ok=True)
+    if VENV_PATH.exists():
+        shutil.rmtree(VENV_PATH)
+    os.makedirs(VENV_PATH, exist_ok=True)
     run(original_executable, "-m", "venv", str(VENV_PATH))
     yield
-    shutil.rmtree(VENV_PATH)
 
 
 @pytest.fixture(autouse=True)
