@@ -211,24 +211,16 @@ def _get_venv_executable(envs_home: str, requirements: str) -> str:
 
 def _to_requirements_obj(requirements: str) -> Any:
     try:
-        """Recommended usage for >= Python 3.7
+        """
         Note: a top-level `packaging` installation may be at a different version
         than the packaging version which pip vendors and uses internally.
         So, instead of using the top-level `packaging` module,
         we import the vendored version. This way we guarantee
         that the packaging APIs are matching pip's behavior exactly.
         """
-        # TODO: can this work for Python 3.6 as well?
         from pip._vendor.packaging.requirements import Requirement
 
         return Requirement(requirements)
-    except ImportError:
-        """
-        Support for == Python 3.6
-        """
-        from pkg_resources import Requirement
-
-        return Requirement.parse(requirements)
     except Exception as e:
         logging.error(f"Error occurred while parsing requirements: {str(e)}")
         raise e
