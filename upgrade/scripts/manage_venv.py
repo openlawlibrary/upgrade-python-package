@@ -2,6 +2,7 @@ import argparse
 import logging
 import subprocess
 import sys
+import shutil
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional
@@ -62,9 +63,9 @@ def upgrade_system_dependencies(venv_executable: str, dependencies: List[str]) -
 
 def upgrade_venv(
     venv_executable: str, requirements_obj: Any, cloudsmith_url: str
-) -> None:
+) -> str:
     try:
-        res = run(
+        return run(
             *(
                 (
                     venv_executable,
@@ -229,7 +230,15 @@ def _to_requirements_obj(requirements: str) -> Any:
 
 @contextmanager
 def temp_venv(venv_path: str) -> str:
-    pass
+    """Create a temporary virtualenv and return the path to the python executable."""
+    try:
+        backup_venv_path = Path(str(venv_path) + "_backup")
+        shutil.copytree(venv_path, str(backup_venv_path))
+        yield platform_specific_python_path(str(backup_venv_path))
+    except Exception as e:
+        logging.error(f"Error occurred while creating temporary venv: {str(e)}")
+        raise e
+
 
 def build_and_upgrade_venv(
     requirements: str,
@@ -267,7 +276,18 @@ def build_and_upgrade_venv(
             )
             return py_executable
 
-        upgrade_venv(py_executable, requirements_obj, cloudsmith_url)
+        with temp_venv(venv_path(envs_home, requirements)) as venv_executable:
+            try:
+                breakpoint()
+                result = upgrade_venv(venv_executable, requirements_obj, cloudsmith_url)
+                # entire result is printing to stdout
+                print()
+            except Exception as e:
+                logging.error(
+                    f"Unexpected error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
+                )
+                raise e
+            
 
     return py_executable
 
