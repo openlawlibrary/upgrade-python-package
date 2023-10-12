@@ -2,6 +2,7 @@ import argparse
 import logging
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional
 from urllib.parse import urljoin
@@ -225,6 +226,10 @@ def _to_requirements_obj(requirements: str) -> Any:
         logging.error(f"Error occurred while parsing requirements: {str(e)}")
         raise e
 
+
+@contextmanager
+def temp_venv(venv_path: str) -> str:
+    pass
 
 def build_and_upgrade_venv(
     requirements: str,
