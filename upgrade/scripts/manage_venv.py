@@ -1,8 +1,9 @@
 import argparse
 import logging
+import re
+import shutil
 import subprocess
 import sys
-import shutil
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional
@@ -75,7 +76,7 @@ def upgrade_venv(
                     f"--cloudsmith-url={cloudsmith_url}",
                     "--skip-post-install",
                     f"--version={str(requirements_obj.specifier)}",
-                    "--test",
+                    f"--log-location={str(log_path)}",
                     "--format-output",
                 )
             )
@@ -123,7 +124,14 @@ def parse_requirements_txt(
     )
 
 
-def venv_path(envs_home: str, requirements: str) -> Path:
+def switch_venvs(venv_path: str) -> None:
+    """Switch the virtualenv directory to the new one."""
+    backup_venv_path = Path(str(venv_path) + "_backup")
+    shutil.rmtree(venv_path)
+    backup_venv_path.rename(venv_path)
+
+
+def _get_venv_path(envs_home: str, requirements: str) -> Path:
     """Get the path to the virtualenv directory.
     Example:
     If requirements.txt contains:
@@ -137,7 +145,7 @@ def venv_path(envs_home: str, requirements: str) -> Path:
 
 def create_venv(envs_home: str, requirements: str) -> str:
     """ """
-    env_path = venv_path(envs_home, requirements)
+    env_path = _get_venv_path(envs_home, requirements)
     create_directory(env_path)
     venv(*[str(env_path)])
     py_executable = platform_specific_python_path(str(env_path))
@@ -204,11 +212,11 @@ def determine_compatible_upgrade_version(
 
 
 def _venv_exists(envs_home: str, requirements: str) -> bool:
-    return venv_path(envs_home, requirements).exists()
+    return _get_venv_path(envs_home, requirements).exists()
 
 
-def _get_venv_executable(envs_home: str, requirements: str) -> str:
-    return platform_specific_python_path(str(venv_path(envs_home, requirements)))
+def _get_venv_executable(venv_path: str) -> str:
+    return platform_specific_python_path(venv_path)
 
 
 def _to_requirements_obj(requirements: str) -> Any:
@@ -229,15 +237,18 @@ def _to_requirements_obj(requirements: str) -> Any:
 
 
 @contextmanager
-def temp_venv(venv_path: str) -> str:
+def temporary_venv(venv_path: str) -> str:
     """Create a temporary virtualenv and return the path to the python executable."""
     try:
         backup_venv_path = Path(str(venv_path) + "_backup")
         shutil.copytree(venv_path, str(backup_venv_path))
-        yield platform_specific_python_path(str(backup_venv_path))
+        yield _get_venv_executable(backup_venv_path)
     except Exception as e:
         logging.error(f"Error occurred while creating temporary venv: {str(e)}")
         raise e
+    finally:
+        if backup_venv_path.exists():
+            shutil.rmtree(backup_venv_path)
 
 
 def build_and_upgrade_venv(
@@ -249,13 +260,14 @@ def build_and_upgrade_venv(
     # two scenarios
     # requirements changed, so have to update
     # requirements did not change, have to determine if new version exists
-
+    venv_path = str(_get_venv_path(envs_home, requirements))
+    error_message = None
     if not _venv_exists(envs_home, requirements):
         # auto_upgrade = True # TODO: re-enable
         logging.info("Requirements changed. Creating new virtualenv.")
         py_executable = create_venv(envs_home, requirements)
     else:
-        py_executable = _get_venv_executable(envs_home, requirements)
+        py_executable = _get_venv_executable(venv_path)
 
         if not auto_upgrade:
             logging.info(
@@ -276,20 +288,26 @@ def build_and_upgrade_venv(
             )
             return py_executable
 
-        with temp_venv(venv_path(envs_home, requirements)) as venv_executable:
+        with temporary_venv(venv_path) as temp_venv_executable:
             try:
-                breakpoint()
-                result = upgrade_venv(venv_executable, requirements_obj, cloudsmith_url)
-                # entire result is printing to stdout
-                print()
+                result = upgrade_venv(
+                    temp_venv_executable, requirements_obj, cloudsmith_url
+                )
             except Exception as e:
                 logging.error(
                     f"Unexpected error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
                 )
                 raise e
-            
 
-    return py_executable
+            upgrade_successful = "true" in upgrade_success_re.search(result).group()
+            if not upgrade_successful:
+                upgrade_response_error_msg = response_error_re.search(result).group(1)
+                error_message = f"Error occurred while upgrading {requirements_obj.name} to version {version}"
+                logging.error(f"{error_message} - {upgrade_response_error_msg}")
+
+            switch_venvs(venv_path)
+
+    return py_executable, error_message
 
 
 def manage_venv(
