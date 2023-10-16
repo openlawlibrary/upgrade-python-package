@@ -9,13 +9,18 @@ import subprocess
 import sys
 from importlib import util
 from pathlib import Path
+from typing import Any, List
 
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
 from upgrade.scripts.slack import send_slack_notification
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
+from pip._vendor.packaging.utils import parse_wheel_filename
+from pip._vendor.packaging.specifiers import SpecifierSet
+
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
+
 
 def upgrade_and_run(
     package_install_cmd,
@@ -196,9 +201,16 @@ def install_wheel(
     package_name, extra = split_package_name_and_extra(package_name)
     if local:
         try:
-            wheel = glob.glob(
+            wheel_paths = glob.glob(
                 f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
-            )[0]
+            )
+            wheel_names = [Path(path).name for path in wheel_paths]
+            parsed_wheel_versions = [
+                str(parse_wheel_filename(wheel_name)[1]) for wheel_name in wheel_names
+            ]
+            wheel_mapping = {k: v for (k, v) in zip(parsed_wheel_versions, wheel_paths)}
+            versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
+            wheel = wheel_mapping.get(versions[-1])
         except IndexError:
             print(f"Wheel {package_name} not found")
             raise
@@ -322,6 +334,7 @@ def upgrade_from_local_wheel(
     cloudsmith_url=None,
     wheels_path=None,
     update_all=False,
+    version=None,
 ):
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     try:
@@ -331,6 +344,7 @@ def upgrade_from_local_wheel(
             local=True,
             wheels_path=wheels_path,
             update_all=update_all,
+            version_cmd=version,
         )
     except Exception:
         raise
@@ -403,6 +417,23 @@ def attempt_upgrade(
     else:
         logging.info('"%s" package was already up-to-date.', package_install_cmd)
     return was_upgraded, resp
+
+
+def filter_versions(
+    specifier_set: Any, parsed_packages_versions: List[Any]
+) -> List[str]:
+    """Returns a list of versions that are compatible with the `SpecifierSet`.
+
+    See https://packaging.pypa.io/en/latest/specifiers.html#specifiers for more details.
+
+    Example:
+        SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14", "2.5.15"]
+    or:
+        SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14"]
+    """
+    return [str(version) for version in specifier_set.filter(parsed_packages_versions)]
 
 
 def reload_uwsgi_app(package_name):
@@ -645,6 +676,7 @@ def upgrade_python_package(
                 wheels_path=wheels_path,
                 cloudsmith_url=cloudsmith_url,
                 update_all=update_all,
+                version=version,
                 *vars,
             )
         elif should_run_initial_post_install:

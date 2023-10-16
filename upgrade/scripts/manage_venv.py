@@ -155,26 +155,6 @@ def create_venv(envs_home: str, requirements: str) -> str:
     return py_executable
 
 
-def _filter_versions(
-    requirements_obj: Any, parsed_packages_versions: List[Any]
-) -> List[str]:
-    """Returns a list of versions that are compatible with the `SpecifierSet`.
-
-    See https://packaging.pypa.io/en/latest/specifiers.html#specifiers for more details.
-
-    Example:
-        SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
-        returns ["2.5.14", "2.5.15"]
-    or:
-        SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
-        returns ["2.5.14"]
-    """
-    return [
-        str(version)
-        for version in requirements_obj.specifier.filter(parsed_packages_versions)
-    ]
-
-
 def get_compatible_versions_from_package_index_html(
     requirements_obj: Any, package_index_html: str
 ) -> List[str]:
@@ -185,7 +165,7 @@ def get_compatible_versions_from_package_index_html(
     parsed_packages_versions = [
         parse_wheel_filename(tag_el.text)[1] for tag_el in anchor_tags_el
     ]
-    return _filter_versions(requirements_obj, parsed_packages_versions)
+    return filter_versions(requirements_obj.specifier, parsed_packages_versions)
 
 
 def determine_compatible_upgrade_version(
