@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -63,26 +64,32 @@ def upgrade_system_dependencies(venv_executable: str, dependencies: List[str]) -
 
 
 def upgrade_venv(
-    venv_executable: str, requirements_obj: Any, cloudsmith_url: str
+    venv_executable: str,
+    requirements_obj: Any,
+    cloudsmith_url: str,
+    wheels_path: Optional[str],
+    update_from_local_wheels: Optional[bool],
 ) -> str:
     try:
-        return run(
-            *(
-                (
-                    venv_executable,
-                    "-m",
-                    "upgrade.scripts.upgrade_python_package",
-                    requirements_obj.name,
-                    f"--cloudsmith-url={cloudsmith_url}",
-                    "--skip-post-install",
-                    f"--version={str(requirements_obj.specifier)}",
-                    f"--log-location={str(log_path)}",
-                    "--format-output",
-                )
-            )
-        )
-        breakpoint()
-        print()
+        log_path = Path("D:\\OLL\\upgrade-python-package\\venv.log")
+
+        upgrade_args = [
+            venv_executable,
+            "-m",
+            "upgrade.scripts.upgrade_python_package",
+            requirements_obj.name,
+            f"--cloudsmith-url={cloudsmith_url}",
+            "--skip-post-install",
+            f"--version={str(requirements_obj.specifier)}",
+            f"--log-location={str(log_path)}",
+            "--format-output",
+        ]
+        if wheels_path:
+            upgrade_args.append(f"--wheels-path={wheels_path}")
+        if update_from_local_wheels:
+            upgrade_args.append("--update-from-local-wheels")
+
+        return run(*(upgrade_args))
     except Exception as e:
         logging.error(
             f"Error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
@@ -128,7 +135,7 @@ def switch_venvs(venv_path: str) -> None:
     """Switch the virtualenv directory to the new one."""
     backup_venv_path = Path(str(venv_path) + "_backup")
     shutil.rmtree(venv_path)
-    backup_venv_path.rename(venv_path)
+    os.rename(str(backup_venv_path), venv_path)
 
 
 def _get_venv_path(envs_home: str, requirements: str) -> Path:
@@ -236,6 +243,8 @@ def build_and_upgrade_venv(
     envs_home: str,
     auto_upgrade: bool,
     cloudsmith_url: str,
+    wheels_path: Optional[str],
+    update_from_local_wheels: Optional[bool],
 ) -> str:
     # two scenarios
     # requirements changed, so have to update
@@ -271,7 +280,11 @@ def build_and_upgrade_venv(
         with temporary_venv(venv_path) as temp_venv_executable:
             try:
                 result = upgrade_venv(
-                    temp_venv_executable, requirements_obj, cloudsmith_url
+                    temp_venv_executable,
+                    requirements_obj,
+                    cloudsmith_url,
+                    wheels_path,
+                    update_from_local_wheels,
                 )
             except Exception as e:
                 logging.error(
@@ -297,6 +310,8 @@ def manage_venv(
     cloudsmith_url=None,
     log_location=None,
     test=False,
+    update_from_local_wheels=False,
+    wheels_path=None,
 ):
     try:
         if test:
@@ -314,7 +329,12 @@ def manage_venv(
         requirements = parse_requirements_txt(requirements_file)
 
         venv = build_and_upgrade_venv(
-            requirements, envs_home, auto_upgrade, cloudsmith_url
+            requirements,
+            envs_home,
+            auto_upgrade,
+            cloudsmith_url,
+            wheels_path,
+            update_from_local_wheels,
         )
 
     except Exception as e:
@@ -362,6 +382,19 @@ parser.add_argument(
     help="Determines whether log messages will be output to stdout "
     + "or written to a log file",
 )
+parser.add_argument(
+    "--update-from-local-wheels",
+    action="store_true",
+    help="Determines whether to install packages from local wheels, which "
+    + "are expected to be in /vagrant/wheels directory",
+)
+parser.add_argument(
+    "--wheels-path",
+    action="store",
+    type=str,
+    default=None,
+    help="Path to the directory containing the wheels.",
+)
 
 
 def main():
@@ -372,6 +405,8 @@ def main():
     cloudsmith_url = parsed_args.cloudsmith_url
     log_location = parsed_args.log_location
     test = parsed_args.test
+    update_from_local_wheels = parsed_args.update_from_local_wheels
+    wheels_path = parsed_args.wheels_path
     manage_venv(
         requirements_file=requirements_file,
         envs_home=envs_home,
@@ -379,6 +414,8 @@ def main():
         cloudsmith_url=cloudsmith_url,
         log_location=log_location,
         test=test,
+        update_from_local_wheels=update_from_local_wheels,
+        wheels_path=wheels_path,
     )
 
 

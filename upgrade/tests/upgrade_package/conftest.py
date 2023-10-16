@@ -2,19 +2,11 @@ import os
 
 import pytest
 from mock import patch
-from pathlib import Path
 
 from upgrade.scripts.upgrade_python_package import pip
-from ..conftest import VENV_PATH
+from ..conftest import VENV_PATH, REPOSITORY_WHEELS_PATH
 
 CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)
-
-REPOSITORY_WHEELS_PATH = Path(__file__).parent.parent / "repository"
-
-
-@pytest.fixture
-def wheels_dir():
-    return REPOSITORY_WHEELS_PATH
 
 
 @pytest.fixture(autouse=True)
