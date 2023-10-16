@@ -336,9 +336,10 @@ def upgrade_from_local_wheel(
     update_all=False,
     version=None,
 ):
+    resp = ""
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     try:
-        install_wheel(
+        resp = install_wheel(
             package_install_cmd,
             cloudsmith_url,
             local=True,
@@ -346,11 +347,13 @@ def upgrade_from_local_wheel(
             update_all=update_all,
             version_cmd=version,
         )
-    except Exception:
-        raise
+    except Exception as e:
+        response_err = str(e)
+        return False, response_err
     if not skip_post_install:
         module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
+    return "Successfully installed" in resp, resp
 
 
 development_url_re = re.compile(r"([^']+development[^']+)")
@@ -670,7 +673,7 @@ def upgrade_python_package(
         wheels_path = wheels_path or "/vagrant/wheels"
         slack_webhook_url = slack_webhook_url or os.environ.get("SLACK_WEBHOOK_URL")
         if update_from_local_wheels:
-            upgrade_from_local_wheel(
+            success, response_err = upgrade_from_local_wheel(
                 package,
                 skip_post_install,
                 wheels_path=wheels_path,
