@@ -82,7 +82,7 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
         if constraints_file_path.exists():
             return str(constraints_file_path)
         raise ImportError
-    except (ImportError, AttributeError):
+    except (TypeError, ImportError, AttributeError):
         site_packages_dir = (
             Path(site_packages_dir)
             if site_packages_dir
