@@ -15,11 +15,17 @@ import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
-from upgrade.scripts.upgrade_python_package import run
-from upgrade.scripts.utils import create_directory, platform_specific_python_path
+from upgrade.scripts.upgrade_python_package import filter_versions, run
+from upgrade.scripts.utils import (
+    create_directory,
+    on_rm_error,
+    platform_specific_python_path,
+)
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
+upgrade_success_re = re.compile(r'{"success": (true|false)')
+response_error_re = re.compile(r'{"responseError": "(.*)"')
 
 
 def venv_pip(venv_executable, *args, **kwargs):
@@ -134,7 +140,7 @@ def parse_requirements_txt(
 def switch_venvs(venv_path: str) -> None:
     """Switch the virtualenv directory to the new one."""
     backup_venv_path = Path(str(venv_path) + "_backup")
-    shutil.rmtree(venv_path)
+    shutil.rmtree(venv_path, onerror=on_rm_error)
     os.rename(str(backup_venv_path), venv_path)
 
 
@@ -235,7 +241,7 @@ def temporary_venv(venv_path: str) -> str:
         raise e
     finally:
         if backup_venv_path.exists():
-            shutil.rmtree(backup_venv_path)
+            shutil.rmtree(backup_venv_path, onerror=on_rm_error)
 
 
 def build_and_upgrade_venv(
@@ -252,18 +258,16 @@ def build_and_upgrade_venv(
     venv_path = str(_get_venv_path(envs_home, requirements))
     error_message = None
     if not _venv_exists(envs_home, requirements):
-        # auto_upgrade = True # TODO: re-enable
+        auto_upgrade = True
         logging.info("Requirements changed. Creating new virtualenv.")
         py_executable = create_venv(envs_home, requirements)
     else:
         py_executable = _get_venv_executable(venv_path)
-
         if not auto_upgrade:
             logging.info(
-                f"Requirements did not change. Returning {envs_home}/{requirements} venv."
+                f"[{envs_home}/{requirements}] - Requirements did not change. Returning venv executable."
             )
             return py_executable
-
     if auto_upgrade:
         requirements_obj = _to_requirements_obj(requirements)
 
