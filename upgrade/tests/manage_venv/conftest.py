@@ -12,7 +12,7 @@ from upgrade.scripts.utils import get_venv_executable
 from ..conftest import REPOSITORY_WHEELS_PATH, original_executable
 
 THIS_FOLDER = Path(__file__).parent
-REPOSITORY_DIR = THIS_FOLDER.parent / "repository"
+ENVIRONMENTS_DIR = THIS_FOLDER.parent / "Environments"
 
 
 def _create_venv(path, version):
@@ -40,17 +40,16 @@ def env_fixture(make_dir=True):
         def wrapped(*args, **kwargs):
             try:
                 request = kwargs["request"]
-                test_dir = Path(REPOSITORY_DIR, Path(request.node.name).stem)
-                full_env_path = test_dir / "Environments"
-                if full_env_path.is_dir():
-                    remove_directory(str(full_env_path.parent))
+                test_dir = Path(ENVIRONMENTS_DIR, Path(request.node.name).stem)
+                if test_dir.is_dir():
+                    remove_directory(str(test_dir.parent))
                 if make_dir:
-                    full_env_path.mkdir(parents=True, exist_ok=True)
-                yield from func(*args, **kwargs, path=str(full_env_path))
+                    test_dir.mkdir(parents=True, exist_ok=True)
+                yield from func(*args, **kwargs, path=str(test_dir))
             except (Exception, KeyboardInterrupt) as e:
                 raise e
             finally:
-                remove_directory(str(full_env_path.parent))
+                remove_directory(str(test_dir.parent))
 
         return wrapped
 
