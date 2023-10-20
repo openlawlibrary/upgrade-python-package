@@ -78,16 +78,3 @@ def initial_v2_0_0_venv(request, path=""):
 def initial_v2_0_1_venv(request, path=""):
     _create_venv(path, "2.0.1")
     yield
-
-
-@pytest.fixture(scope="module")
-def top_level_requirements(request, envs_home):
-    test_package = Path(envs_home) / "test_repository"
-    test_package.mkdir(parents=True, exist_ok=True)
-    requirements_txt = test_package / "requirements.txt"
-    requirements_txt.touch()
-
-    with open(requirements_txt, "w") as requirements:
-        requirements.write("oll-test-top-level~=2.0.0")
-
-    yield (str(requirements_txt), "oll-test-top-level~=2.0.0")

@@ -20,6 +20,7 @@ from upgrade.scripts.utils import (
     on_rm_error,
     platform_specific_python_path,
 )
+from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
@@ -100,40 +101,6 @@ def upgrade_venv(
             f"Error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
         )
         raise e
-    pass
-
-
-def parse_requirements_txt(
-    requirements_file: str,
-) -> str:
-    """Parse requirements.txt from repository.
-    We expect following formats:
-        ```
-        dependency # oll.dependency.module.*
-        ```
-    or
-        ```
-        dependency~=2.6.7 # oll.dependency.module.*
-        ```
-    <Arguments>
-        requirements_file: Path to requirements.txt file
-    <Returns>
-        str: Requirements
-    """
-    requirements_file = Path(requirements_file)
-
-    if not Path(requirements_file).is_file():
-        raise RequiredArgumentMissing(f"{requirements_file} does not exist")
-
-    with open(requirements_file, "r") as requirements:
-        for requirement in requirements.readlines():
-            if "#" in requirement:
-                requirements, _ = [s.strip() for s in requirement.split("#")]
-                return requirements
-
-    raise RequiredArgumentMissing(
-        f"{requirements_file} does not contain a valid definition of a module"
-    )
 
 
 def _switch_venvs(venv_path: str) -> None:
@@ -268,14 +235,14 @@ def build_and_upgrade_venv(
         logging.info(msg)
         py_executable = create_venv(envs_home, requirements)
     else:
-        py_executable = _get_venv_executable(venv_path)
+        py_executable = get_venv_executable(venv_path)
         if not auto_upgrade:
             msg = "Requirements did not change. Returning venv executable."
             print(msg)
             logging.info(msg)
             return py_executable
     if auto_upgrade:
-        requirements_obj = _to_requirements_obj(requirements)
+        requirements_obj = to_requirements_obj(requirements)
 
         # this check needs to be a separate CLI command
         # TODO: what happens if the version is None but the package is not installed yet? e.g. ~=2.10.0
