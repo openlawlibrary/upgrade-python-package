@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 import re
 import shutil
 import subprocess
@@ -137,11 +136,16 @@ def parse_requirements_txt(
     )
 
 
-def switch_venvs(venv_path: str) -> None:
-    """Switch the virtualenv directory to the new one."""
+def _switch_venvs(venv_path: str) -> None:
+    """
+    Switch the virtualenv environments after a successful upgrade,
+    since we first upgrade packages in a temporary `<venv_name>_backup` venv.
+    """
     backup_venv_path = Path(str(venv_path) + "_backup")
-    shutil.rmtree(venv_path, onerror=on_rm_error)
-    os.rename(str(backup_venv_path), venv_path)
+    temp_venv_path = Path(str(venv_path) + "_temp")
+    shutil.move(venv_path, temp_venv_path)
+    shutil.move(backup_venv_path, venv_path)
+    shutil.rmtree(temp_venv_path, onerror=on_rm_error)
 
 
 def _get_venv_path(envs_home: str, requirements: str) -> Path:
@@ -302,7 +306,7 @@ def build_and_upgrade_venv(
                 error_message = f"Error occurred while upgrading {requirements_obj.name} to version {version}"
                 logging.error(f"{error_message} - {upgrade_response_error_msg}")
 
-            switch_venvs(venv_path)
+            _switch_venvs(venv_path)
 
     return py_executable, error_message
 
