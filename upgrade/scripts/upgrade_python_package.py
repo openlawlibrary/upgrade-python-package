@@ -305,8 +305,8 @@ def is_development_cloudsmith(cloudsmith_url):
     return development_index_re.search(pip_config) is not None
 
 
-def is_package_already_installed(package):
-    results = pip("list", "--format", "json")
+def is_package_already_installed(package, py_executable=sys.executable):
+    results = pip("list", "--format", "json", py_executable=py_executable)
     try:
         decoder = json.JSONDecoder()
         parsed_results, _ = decoder.raw_decode(results)
@@ -480,8 +480,9 @@ def run_python_module(module_name, *args, **kwargs):
         var_name = f"UPDATE_{module_name.upper()}"
         args = tuple(os.environ.get(var_name, "").split())
     logging.info("running %s python module", module_name)
+    py_executable = kwargs.pop("py_executable", sys.executable)
     try:
-        return run(*((sys.executable, "-m", module_name) + args), **kwargs)
+        return run(*((py_executable, "-m", module_name) + args), **kwargs)
     except subprocess.CalledProcessError as e:
         logging.error("Error occurred while running module %s: %s", module_name, str(e))
         raise e

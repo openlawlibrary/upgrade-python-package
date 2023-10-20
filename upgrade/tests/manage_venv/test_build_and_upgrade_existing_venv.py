@@ -3,9 +3,9 @@ from pathlib import Path
 
 from upgrade.scripts.manage_venv import (
     build_and_upgrade_venv,
-    venv_pip,
-    _get_venv_executable,
 )
+from upgrade.scripts.upgrade_python_package import pip
+from upgrade.scripts.utils import get_venv_executable
 
 
 def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_enabled_expect_venv_upgraded_to_v2_0_1(
@@ -30,15 +30,15 @@ def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_ena
         )
 
     venv_path = Path(envs_home, dependency_to_install)
-    venv_executable = _get_venv_executable(venv_path)
+    venv_executable = get_venv_executable(venv_path)
 
-    venv_pip(venv_executable, "check")
+    pip("check", py_executable=venv_executable)
 
-    dependencies_from_venv = venv_pip(
-        venv_executable,
+    dependencies_from_venv = pip(
         "list",
         "--format=freeze",
         "--exclude-editable",
+        py_executable=venv_executable,
     ).splitlines()
 
     expected_packages = {
@@ -97,21 +97,18 @@ def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_ena
             dependency_to_install,
             envs_home,
             auto_upgrade=True,
-            cloudsmith_url="",
+            cloudsmith_url="https://dl.cloudsmith.io/HEN2hdS5KSl4O3JI/openlawlibrary/development/python/index/",
             wheels_path=str(wheels_dir),
             update_from_local_wheels=True,
         )
 
     venv_path = Path(envs_home, dependency_to_install)
-    venv_executable = _get_venv_executable(venv_path)
+    venv_executable = get_venv_executable(venv_path)
 
-    venv_pip(venv_executable, "check")
+    pip("check", py_executable=venv_executable)
 
-    dependencies_from_venv = venv_pip(
-        venv_executable,
-        "list",
-        "--format=freeze",
-        "--exclude-editable",
+    dependencies_from_venv = pip(
+        "list", "--format=freeze", "--exclude-editable", py_executable=venv_executable
     ).splitlines()
 
     expected_packages = {

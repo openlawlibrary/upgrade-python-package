@@ -15,7 +15,7 @@ def create_directory(path: Path) -> None:
         raise e
 
 
-def platform_specific_python_path(venv_path: str) -> str:
+def get_venv_executable(venv_path: str) -> str:
     if is_windows():
         return str(Path(venv_path, "Scripts", "python.exe").absolute())
     else:

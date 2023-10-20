@@ -7,7 +7,7 @@ from mock import patch
 from upgrade.tests.utils import remove_directory
 from upgrade.scripts.upgrade_python_package import run
 
-from upgrade.scripts.manage_venv import _get_venv_executable
+from upgrade.scripts.utils import get_venv_executable
 
 from ..conftest import REPOSITORY_WHEELS_PATH, original_executable
 
@@ -21,7 +21,7 @@ def _create_venv(path, version):
 
     venv_path = str(Path(path, venv_name))
     run(original_executable, "-m", "venv", venv_path)
-    venv_executable = _get_venv_executable(venv_path)
+    venv_executable = get_venv_executable(venv_path)
     run(
         venv_executable,
         "-m",

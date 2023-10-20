@@ -13,12 +13,11 @@ import lxml.etree as et
 import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 
-from upgrade.scripts.exceptions import RequiredArgumentMissing
-from upgrade.scripts.upgrade_python_package import filter_versions, run
+from upgrade.scripts.upgrade_python_package import filter_versions, run, pip
 from upgrade.scripts.utils import (
     create_directory,
     on_rm_error,
-    platform_specific_python_path,
+    get_venv_executable,
 )
 from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
 from upgrade.scripts.validations import is_cloudsmith_url_valid
@@ -26,14 +25,6 @@ from upgrade.scripts.validations import is_cloudsmith_url_valid
 SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
 upgrade_success_re = re.compile(r'{"success": (true|false)')
 response_output_re = re.compile(r'"responseOutput": "(.*?)"')
-
-
-def venv_pip(venv_executable, *args, **kwargs):
-    try:
-        return run(*((venv_executable, "-m", "pip") + args), **kwargs)
-    except subprocess.CalledProcessError as e:
-        logging.error("Error occurred while running pip in venv %s", str(e))
-        raise e
 
 
 def ensure_pip(venv_executable, *args, **kwargs):
@@ -56,12 +47,20 @@ def upgrade_system_dependencies(venv_executable: str, dependencies: List[str]) -
     for dependency in dependencies:
         try:
             # # FIXME: for local testing
-            # if "upgrade-python-package" in dependency:
-            #     venv_pip(
-            #         venv_executable, "install", "-e", "D:\\OLL\\upgrade-python-package"
-            #     )
-            # else:
-                venv_pip(venv_executable, "install", "--upgrade", f"{dependency}")
+            if "upgrade-python-package" in dependency:
+                pip(
+                    "install",
+                    "-e",
+                    "D:\\OLL\\upgrade-python-package",
+                    py_executable=venv_executable,
+                )
+            else:
+                pip(
+                    "install",
+                    "--upgrade",
+                    f"{dependency}",
+                    py_executable=venv_executable,
+                )
         except subprocess.CalledProcessError as e:
             logging.error(
                 f"Error occurred while upgrading running pip upgrade {dependency} {str(e)}"
@@ -132,7 +131,7 @@ def create_venv(envs_home: str, requirements: str) -> str:
     env_path = _get_venv_path(envs_home, requirements)
     create_directory(env_path)
     venv(*[str(env_path)])
-    py_executable = platform_specific_python_path(str(env_path))
+    py_executable = get_venv_executable(str(env_path))
     ensure_pip(py_executable)
     upgrade_system_dependencies(py_executable, SYSTEM_DEPENDENCIES)
 
@@ -179,34 +178,13 @@ def _venv_exists(envs_home: str, requirements: str) -> bool:
     return _get_venv_path(envs_home, requirements).exists()
 
 
-def _get_venv_executable(venv_path: str) -> str:
-    return platform_specific_python_path(venv_path)
-
-
-def _to_requirements_obj(requirements: str) -> Any:
-    try:
-        """
-        Note: a top-level `packaging` installation may be at a different version
-        than the packaging version which pip vendors and uses internally.
-        So, instead of using the top-level `packaging` module,
-        we import the vendored version. This way we guarantee
-        that the packaging APIs are matching pip's behavior exactly.
-        """
-        from pip._vendor.packaging.requirements import Requirement
-
-        return Requirement(requirements)
-    except Exception as e:
-        logging.error(f"Error occurred while parsing requirements: {str(e)}")
-        raise e
-
-
 @contextmanager
 def temporary_venv(venv_path: str) -> str:
     """Create a temporary virtualenv and return the path to the python executable."""
     try:
         backup_venv_path = Path(str(venv_path) + "_backup")
         shutil.copytree(venv_path, str(backup_venv_path))
-        yield _get_venv_executable(backup_venv_path)
+        yield get_venv_executable(backup_venv_path)
     except Exception as e:
         logging.error(f"Error occurred while creating temporary venv: {str(e)}")
         raise e
