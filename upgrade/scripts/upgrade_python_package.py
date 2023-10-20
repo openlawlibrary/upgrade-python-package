@@ -241,13 +241,13 @@ def install_wheel(
     if args:
         install_args.extend(args)
     try:
-        pip(*install_args)
-        pip("check")
+        resp += pip(*install_args)
+        resp += pip("check")
     except:
         # try to install with constraints
         constraints_file_path = get_constraints_file_path(package_name)
         try:
-            resp = install_with_constraints(
+            resp += install_with_constraints(
                 to_install,
                 constraints_file_path,
                 cloudsmith_url,
@@ -657,7 +657,7 @@ def upgrade_python_package(
     *vars,
 ):
     success = False
-    response_err = ""
+    response_output = ""
     try:
         if test:
             logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
@@ -673,7 +673,7 @@ def upgrade_python_package(
         wheels_path = wheels_path or "/vagrant/wheels"
         slack_webhook_url = slack_webhook_url or os.environ.get("SLACK_WEBHOOK_URL")
         if update_from_local_wheels:
-            success, response_err = upgrade_from_local_wheel(
+            success, response_output = upgrade_from_local_wheel(
                 package,
                 skip_post_install,
                 wheels_path=wheels_path,
@@ -685,7 +685,7 @@ def upgrade_python_package(
         elif should_run_initial_post_install:
             run_initial_post_install(package, *vars)
         else:
-            success, response_err = upgrade_and_run(
+            success, response_output = upgrade_and_run(
                 package,
                 force,
                 skip_post_install,
@@ -698,13 +698,15 @@ def upgrade_python_package(
     except Exception as e:
         if not format_output:
             raise e
-        response_err += str(e)
+        response_output += str(e)
     if format_output:
         while len(logging.root.handlers) > 0:
             logging.root.removeHandler(logging.root.handlers[-1])
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        response_err = response_err if not success else ""
-        response = json.dumps({"success": success, "responseError": response_err}) #todo: this should be upgradeOutput, not responseErr
+        # response_err = response_err if not success else ""
+        response = json.dumps(
+            {"success": success, "responseOutput": response_output}
+        )
         logging.info(response)
         print(response)
 

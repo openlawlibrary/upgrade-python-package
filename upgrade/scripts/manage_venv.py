@@ -24,7 +24,7 @@ from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
 upgrade_success_re = re.compile(r'{"success": (true|false)')
-response_error_re = re.compile(r'{"responseError": "(.*)"')
+response_output_re = re.compile(r'"responseOutput": "(.*?)"')
 
 
 def venv_pip(venv_executable, *args, **kwargs):
@@ -263,14 +263,16 @@ def build_and_upgrade_venv(
     error_message = None
     if not _venv_exists(envs_home, requirements):
         auto_upgrade = True
-        logging.info("Requirements changed. Creating new virtualenv.")
+        msg = "Requirements changed. Creating new virtualenv."
+        print(msg)
+        logging.info(msg)
         py_executable = create_venv(envs_home, requirements)
     else:
         py_executable = _get_venv_executable(venv_path)
         if not auto_upgrade:
-            logging.info(
-                f"[{envs_home}/{requirements}] - Requirements did not change. Returning venv executable."
-            )
+            msg = "Requirements did not change. Returning venv executable."
+            print(msg)
+            logging.info(msg)
             return py_executable
     if auto_upgrade:
         requirements_obj = _to_requirements_obj(requirements)
@@ -287,24 +289,25 @@ def build_and_upgrade_venv(
 
         with temporary_venv(venv_path) as temp_venv_executable:
             try:
-                result = upgrade_venv(
+                response = upgrade_venv(
                     temp_venv_executable,
                     requirements_obj,
                     cloudsmith_url,
                     wheels_path,
                     update_from_local_wheels,
                 )
+                logging.info(response)
             except Exception as e:
                 logging.error(
                     f"Unexpected error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
                 )
                 raise e
 
-            upgrade_successful = "true" in upgrade_success_re.search(result).group()
+            upgrade_successful = "true" in upgrade_success_re.search(response).group()
             if not upgrade_successful:
-                upgrade_response_error_msg = response_error_re.search(result).group(1)
-                error_message = f"Error occurred while upgrading {requirements_obj.name} to version {version}"
-                logging.error(f"{error_message} - {upgrade_response_error_msg}")
+                response_error_msg = response_output_re.search(response).group(1)
+                msg = f"Error occurred while upgrading {requirements_obj.name} to version {version}"
+                logging.error(f"{msg} - {response_error_msg}")
 
             _switch_venvs(venv_path)
 
