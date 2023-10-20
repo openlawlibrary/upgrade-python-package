@@ -315,14 +315,14 @@ def build_and_upgrade_venv(
 
 
 def manage_venv(
-    requirements_file=None,
-    envs_home=None,
-    auto_upgrade=False,
-    cloudsmith_url=None,
-    log_location=None,
-    test=False,
-    update_from_local_wheels=False,
-    wheels_path=None,
+    requirements_file: str,
+    envs_home: str,
+    auto_upgrade: bool = False,
+    cloudsmith_url: Optional[str] = None,
+    log_location: Optional[str] = None,
+    test: Optional[bool] = False,
+    update_from_local_wheels: Optional[bool] = False,
+    wheels_path: Optional[str] = None,
 ):
     try:
         if test:
@@ -360,7 +360,6 @@ parser.add_argument(
     action="store",
     required=True,
     type=str,
-    default=None,
     help="Path to the requirements.txt file within a repository."
     + "Requirements file is passed to pip install -r <requirements_file>.",
 )
@@ -369,7 +368,6 @@ parser.add_argument(
     action="store",
     type=str,
     required=True,
-    default=None,
     help="Path to the home of all virtualenv directories",
 )
 parser.add_argument(

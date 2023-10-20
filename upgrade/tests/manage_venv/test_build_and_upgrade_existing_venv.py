@@ -73,7 +73,7 @@ def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_dis
             wheels_path=str(wheels_dir),
             update_from_local_wheels=True,
         )
-    out, _ = capfd.readouterr() # TODO: read from logs since capture does not work from venv
+    out, _ = capfd.readouterr()
 
     expected = "Requirements did not change. Returning venv executable."
     actual = out
