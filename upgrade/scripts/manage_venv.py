@@ -7,13 +7,8 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional
-from urllib.parse import urljoin
 
-import lxml.etree as et
-import pip._vendor.requests as requests
-from pip._vendor.packaging.utils import parse_wheel_filename
-
-from upgrade.scripts.upgrade_python_package import filter_versions, run, pip
+from upgrade.scripts.upgrade_python_package import run, pip
 from upgrade.scripts.utils import (
     create_directory,
     on_rm_error,
@@ -138,42 +133,6 @@ def create_venv(envs_home: str, requirements: str) -> str:
     return py_executable
 
 
-def get_compatible_versions_from_package_index_html(
-    requirements_obj: Any, package_index_html: str
-) -> List[str]:
-    """Parse the package index HTML list of available packages
-    and return a list of package versions that are compatible"""
-    tree = et.HTML(package_index_html)
-    anchor_tags_el = tree.xpath("//a")
-    parsed_packages_versions = [
-        parse_wheel_filename(tag_el.text)[1] for tag_el in anchor_tags_el
-    ]
-    return filter_versions(requirements_obj.specifier, parsed_packages_versions)
-
-
-def determine_compatible_upgrade_version(
-    requirements_obj: Any, cloudsmith_url: str
-) -> Optional[List[str]]:
-    package_name = requirements_obj.name
-
-    package_index_url = urljoin(cloudsmith_url, package_name)
-    package_full_index_url = (
-        package_index_url
-        if package_index_url.endswith("/")
-        else package_index_url + "/"
-    )
-    package_index_html = requests.get(package_full_index_url).text
-
-    compatible_versions = get_compatible_versions_from_package_index_html(
-        requirements_obj, package_index_html
-    )
-    if not compatible_versions or len(compatible_versions) == 1:
-        """No compatible versions to upgrade"""
-        return None
-
-    return sorted(compatible_versions, reverse=True)[0]
-
-
 def _venv_exists(envs_home: str, requirements: str) -> bool:
     return _get_venv_path(envs_home, requirements).exists()
 
@@ -201,9 +160,7 @@ def build_and_upgrade_venv(
     wheels_path: Optional[str],
     update_from_local_wheels: Optional[bool],
 ) -> str:
-    # two scenarios
-    # requirements changed, so have to update
-    # requirements did not change, have to determine if new version exists
+    """Build and upgrade a virtualenv."""
     venv_path = str(_get_venv_path(envs_home, requirements))
     error_message = None
     if not _venv_exists(envs_home, requirements):
@@ -221,16 +178,6 @@ def build_and_upgrade_venv(
             return py_executable
     if auto_upgrade:
         requirements_obj = to_requirements_obj(requirements)
-
-        # this check needs to be a separate CLI command
-        # TODO: what happens if the version is None but the package is not installed yet? e.g. ~=2.10.0
-        version = determine_compatible_upgrade_version(requirements_obj, cloudsmith_url)
-
-        if version is None:
-            logging.info(
-                f"Virtual environment {envs_home}/{requirements} is up to date. Skipping upgrade."
-            )
-            return py_executable
 
         with temporary_venv(venv_path) as temp_venv_executable:
             try:
