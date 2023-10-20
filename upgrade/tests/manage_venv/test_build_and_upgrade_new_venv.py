@@ -1,13 +1,10 @@
-import pytest
-from mock import patch
-
-from upgrade.scripts.utils import is_windows
-from upgrade.scripts.manage_venv import (
-    build_and_upgrade_venv,
-    venv_pip,
-    _get_venv_executable,
-)
 from pathlib import Path
+
+import pytest
+
+from upgrade.scripts.manage_venv import build_and_upgrade_venv
+from upgrade.scripts.upgrade_python_package import pip
+from upgrade.scripts.utils import get_venv_executable, is_windows
 
 EXPECTED_VENV_FILES = (
     ["pyvenv.cfg", "Scripts", "Lib"]
@@ -33,19 +30,14 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
     mock_cloudsmith_url_valid,
 ):
     cut = build_and_upgrade_venv
-
-    with patch(
-        "upgrade.scripts.manage_venv.determine_compatible_upgrade_version",
-        lambda *_,: expected_installed_version,
-    ):
-        cut(
-            dependency_to_install,
-            envs_home,
-            auto_upgrade=False,
-            cloudsmith_url="",
-            wheels_path=str(wheels_dir),
-            update_from_local_wheels=True,
-        )
+    cut(
+        dependency_to_install,
+        envs_home,
+        auto_upgrade=False,
+        cloudsmith_url="",
+        wheels_path=str(wheels_dir),
+        update_from_local_wheels=True,
+    )
     venv_path = Path(envs_home, dependency_to_install)
 
     assert venv_path.exists()
@@ -54,13 +46,13 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
     for file in EXPECTED_VENV_FILES:
         assert Path(venv_path, file).exists()
 
-    venv_executable = _get_venv_executable(venv_path)
+    venv_executable = get_venv_executable(venv_path)
 
-    dependencies_from_venv = venv_pip(
-        venv_executable,
+    dependencies_from_venv = pip(
         "list",
         "--format=freeze",
         "--exclude-editable",
+        py_executable=venv_executable,
     ).splitlines()
 
     expected_packages = {

@@ -1,4 +1,3 @@
-from mock import patch
 from pathlib import Path
 
 from upgrade.scripts.manage_venv import (
@@ -15,19 +14,14 @@ def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_ena
     expected_installed_version = "2.0.1"
 
     cut = build_and_upgrade_venv
-
-    with patch(
-        "upgrade.scripts.manage_venv.determine_compatible_upgrade_version",
-        lambda *_,: expected_installed_version,
-    ):
-        cut(
-            dependency_to_install,
-            envs_home,
-            auto_upgrade=True,
-            cloudsmith_url="",
-            wheels_path=str(wheels_dir),
-            update_from_local_wheels=True,
-        )
+    cut(
+        dependency_to_install,
+        envs_home,
+        auto_upgrade=True,
+        cloudsmith_url="",
+        wheels_path=str(wheels_dir),
+        update_from_local_wheels=True,
+    )
 
     venv_path = Path(envs_home, dependency_to_install)
     venv_executable = get_venv_executable(venv_path)
@@ -57,22 +51,16 @@ def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_dis
     initial_v2_0_1_venv, envs_home, wheels_dir, mock_cloudsmith_url_valid, capfd
 ):
     dependency_to_install = "oll-test-top-level~=2.0.1"
-    expected_installed_version = "2.0.1"
 
     cut = build_and_upgrade_venv
-
-    with patch(
-        "upgrade.scripts.manage_venv.determine_compatible_upgrade_version",
-        lambda *_,: expected_installed_version,
-    ):
-        cut(
-            dependency_to_install,
-            envs_home,
-            auto_upgrade=False,
-            cloudsmith_url="",
-            wheels_path=str(wheels_dir),
-            update_from_local_wheels=True,
-        )
+    cut(
+        dependency_to_install,
+        envs_home,
+        auto_upgrade=False,
+        cloudsmith_url="",
+        wheels_path=str(wheels_dir),
+        update_from_local_wheels=True,
+    )
     out, _ = capfd.readouterr()
 
     expected = "Requirements did not change. Returning venv executable."
@@ -88,19 +76,14 @@ def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_ena
     expected_installed_version = "2.0.1"
 
     cut = build_and_upgrade_venv
-
-    with patch(
-        "upgrade.scripts.manage_venv.determine_compatible_upgrade_version",
-        lambda *_,: expected_installed_version,
-    ):
-        cut(
-            dependency_to_install,
-            envs_home,
-            auto_upgrade=True,
-            cloudsmith_url="https://dl.cloudsmith.io/HEN2hdS5KSl4O3JI/openlawlibrary/development/python/index/",
-            wheels_path=str(wheels_dir),
-            update_from_local_wheels=True,
-        )
+    cut(
+        dependency_to_install,
+        envs_home,
+        auto_upgrade=True,
+        cloudsmith_url="cloudsmith_url",
+        wheels_path=str(wheels_dir),
+        update_from_local_wheels=True,
+    )
 
     venv_path = Path(envs_home, dependency_to_install)
     venv_executable = get_venv_executable(venv_path)
