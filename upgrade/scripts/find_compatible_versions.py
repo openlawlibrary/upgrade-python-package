@@ -48,6 +48,7 @@ def get_compatible_upgrade_versions(
 
 
 def get_installed_version(requirements_obj: Any, venv_executable: str) -> Optional[str]:
+    """Return the version of the package that is installed in the virtualenv."""
     try:
         return is_package_already_installed(requirements_obj.name, venv_executable)
     except Exception as e:
@@ -60,7 +61,9 @@ def get_compatible_version(
     venv_path: str,
     cloudsmith_url: Optional[str] = None,
 ) -> Optional[str]:
-    """Return the latest compatible version of the package that is installed in the virtualenv."""
+    """Return the latest compatible version of the package that is installed in the virtualenv.
+    Returns None if no compatible version is found.
+    """
     venv_executable = get_venv_executable(venv_path)
 
     installed_version = get_installed_version(requirements_obj, venv_executable)
