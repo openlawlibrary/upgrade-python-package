@@ -44,10 +44,6 @@ def get_compatible_upgrade_versions(
         requirements_obj.specifier, parsed_packages_versions
     )
 
-    if not compatible_versions or len(compatible_versions) == 1:
-        """No compatible versions to upgrade"""
-        return None
-
     return sorted(compatible_versions, reverse=True)
 
 
@@ -67,7 +63,7 @@ def get_compatible_version(
     """Return the latest compatible version of the package that is installed in the virtualenv."""
     venv_executable = get_venv_executable(venv_path)
 
-    installed_version = get_installed_version(venv_executable)
+    installed_version = get_installed_version(requirements_obj, venv_executable)
     if not installed_version:
         raise Exception(f"Package {requirements_obj.name} is not installed")
 
