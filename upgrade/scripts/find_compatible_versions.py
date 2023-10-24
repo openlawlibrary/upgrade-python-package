@@ -69,6 +69,7 @@ def get_compatible_version(
     installed_version = get_installed_version(requirements_obj, venv_executable)
     if not installed_version:
         raise Exception(f"Package {requirements_obj.name} is not installed")
+    print(f"installed_version: {installed_version}")
 
     upgrade_versions = get_compatible_upgrade_versions(requirements_obj, cloudsmith_url)
     for upgrade_version in upgrade_versions:
@@ -79,13 +80,16 @@ def get_compatible_version(
 
 
 def find_compatible_versions(
-    requirements_file: str,
     venv_path: str,
+    requirements: Optional[str],
+    requirements_file: Optional[str],
     cloudsmith_url: Optional[str] = None,
     log_location: Optional[str] = None,
     test: Optional[bool] = None,
 ):
     try:
+        if requirements is None and requirements_file is None:
+            raise Exception("Either requirements or requirements_file is required.")
         if test:
             logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
         else:
@@ -98,10 +102,12 @@ def find_compatible_versions(
         if cloudsmith_url:
             is_cloudsmith_url_valid(cloudsmith_url)
 
-        requirements = parse_requirements_txt(requirements_file)
+        requirements = requirements or parse_requirements_txt(requirements_file)
         upgrade_version = get_compatible_version(
             to_requirements_obj(requirements), venv_path, cloudsmith_url
         )
+        print(upgrade_version)
+        logging.info(f"Compatible version: {upgrade_version}")
 
     except Exception as e:
         logging.error(e)
@@ -110,6 +116,13 @@ def find_compatible_versions(
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument(
+    "--requirements",
+    action="store",
+    default=None,
+    type=str,
+    help="Dependency name, specifier and version in the format: <dependency_name><specifier><version>.",
+)
 parser.add_argument(
     "--requirements-file",
     action="store",
@@ -143,14 +156,17 @@ parser.add_argument(
 
 def main():
     parsed_args = parser.parse_args()
+    requirements = parsed_args.requirements
     requirements_file = parsed_args.requirements_file
     venv_path = parsed_args.venv_path
     cloudsmith_url = parsed_args.cloudsmith_url
     log_location = parsed_args.log_location
     test = parsed_args.test
+
     find_compatible_versions(
-        requirements_file=requirements_file,
         venv_path=venv_path,
+        requirements=requirements,
+        requirements_file=requirements_file,
         cloudsmith_url=cloudsmith_url,
         log_location=log_location,
         test=test,

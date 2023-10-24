@@ -198,7 +198,7 @@ def build_and_upgrade_venv(
             upgrade_successful = "true" in upgrade_success_re.search(response).group()
             if not upgrade_successful:
                 response_error_msg = response_output_re.search(response).group(1)
-                msg = f"Error occurred while upgrading {requirements_obj.name} to version {version}"
+                msg = f"Error occurred while upgrading {requirements_obj.name}"
                 logging.error(f"{msg} - {response_error_msg}")
 
             _switch_venvs(venv_path)
@@ -207,8 +207,9 @@ def build_and_upgrade_venv(
 
 
 def manage_venv(
-    requirements_file: str,
     envs_home: str,
+    requirements: Optional[str] = None,
+    requirements_file: Optional[str] = None,
     auto_upgrade: bool = False,
     cloudsmith_url: Optional[str] = None,
     log_location: Optional[str] = None,
@@ -217,6 +218,9 @@ def manage_venv(
     wheels_path: Optional[str] = None,
 ):
     try:
+        if requirements is None and requirements_file is None:
+            raise Exception("Either requirements or requirements_file is required.")
+
         if test:
             logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
         else:
@@ -229,7 +233,7 @@ def manage_venv(
         if cloudsmith_url:
             is_cloudsmith_url_valid(cloudsmith_url)
 
-        requirements = parse_requirements_txt(requirements_file)
+        requirements = requirements or parse_requirements_txt(requirements_file)
 
         venv = build_and_upgrade_venv(
             requirements,
@@ -248,9 +252,16 @@ def manage_venv(
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
+    "--requirements",
+    action="store",
+    default=None,
+    type=str,
+    help="Dependency name, specifier and version in the format: <dependency_name><specifier><version>.",
+)
+parser.add_argument(
     "--requirements-file",
     action="store",
-    required=True,
+    default=None,
     type=str,
     help="Path to the requirements.txt file within a repository."
     + "Requirements file is passed to pip install -r <requirements_file>.",
@@ -260,6 +271,7 @@ parser.add_argument(
     action="store",
     type=str,
     required=True,
+    default=None,
     help="Path to the home of all virtualenv directories",
 )
 parser.add_argument(
@@ -300,6 +312,7 @@ parser.add_argument(
 
 def main():
     parsed_args = parser.parse_args()
+    requirements = parsed_args.requirements
     requirements_file = parsed_args.requirements_file
     envs_home = parsed_args.envs_home
     auto_upgrade = parsed_args.auto_upgrade
@@ -309,8 +322,9 @@ def main():
     update_from_local_wheels = parsed_args.update_from_local_wheels
     wheels_path = parsed_args.wheels_path
     manage_venv(
-        requirements_file=requirements_file,
         envs_home=envs_home,
+        requirements=requirements,
+        requirements_file=requirements_file,
         auto_upgrade=auto_upgrade,
         cloudsmith_url=cloudsmith_url,
         log_location=log_location,
