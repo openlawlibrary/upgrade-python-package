@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional
 
-from upgrade.scripts.upgrade_python_package import run, pip
+from upgrade.scripts.upgrade_python_package import run, pip, is_development_cloudsmith
 from upgrade.scripts.utils import (
     create_directory,
     on_rm_error,
@@ -69,27 +69,41 @@ def upgrade_venv(
     cloudsmith_url: str,
     wheels_path: Optional[str],
     update_from_local_wheels: Optional[bool],
+    additional_dependencies: Optional[List[str]],
 ) -> str:
     try:
         log_path = Path("D:\\OLL\\upgrade-python-package\\venv.log")
 
-        upgrade_args = [
-            venv_executable,
-            "-m",
-            "upgrade.scripts.upgrade_python_package",
-            requirements_obj.name,
-            f"--cloudsmith-url={cloudsmith_url}",
-            "--skip-post-install",
-            f"--version={str(requirements_obj.specifier)}",
-            f"--log-location={str(log_path)}",
-            "--format-output",
-        ]
-        if wheels_path:
-            upgrade_args.append(f"--wheels-path={wheels_path}")
-        if update_from_local_wheels:
-            upgrade_args.append("--update-from-local-wheels")
+        result = ""
+        for dependency in [requirements_obj.name] + additional_dependencies:
+            upgrade_args = [
+                venv_executable,
+                "-m",
+                "upgrade.scripts.upgrade_python_package",
+                dependency,
+            ]
 
-        return run(*(upgrade_args))
+            if is_development_cloudsmith(cloudsmith_url):
+                upgrade_args.append("'--pre'")
+            else:
+                upgrade_args.append(f"--version={requirements_obj.specifier}")
+
+            upgrade_args.extend(
+                [
+                    f"--cloudsmith-url={cloudsmith_url}",
+                    "--skip-post-install",
+                    f"--log-location={str(log_path)}",
+                    "--format-output",
+                ]
+            )
+            if wheels_path:
+                upgrade_args.append(f"--wheels-path={wheels_path}")
+            if update_from_local_wheels:
+                upgrade_args.append("--update-from-local-wheels")
+
+            result += run(*(upgrade_args))
+
+        return result
     except Exception as e:
         logging.error(
             f"Error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
@@ -157,8 +171,9 @@ def build_and_upgrade_venv(
     envs_home: str,
     auto_upgrade: bool,
     cloudsmith_url: str,
-    wheels_path: Optional[str],
-    update_from_local_wheels: Optional[bool],
+    wheels_path: Optional[str] = None,
+    update_from_local_wheels: Optional[bool] = None,
+    additional_dependencies: Optional[List[str]] = None,
 ) -> str:
     """Build and upgrade a virtualenv."""
     venv_path = str(_get_venv_path(envs_home, requirements))
@@ -187,6 +202,7 @@ def build_and_upgrade_venv(
                     cloudsmith_url,
                     wheels_path,
                     update_from_local_wheels,
+                    additional_dependencies or [],
                 )
                 logging.info(response)
             except Exception as e:
@@ -216,6 +232,7 @@ def manage_venv(
     test: Optional[bool] = False,
     update_from_local_wheels: Optional[bool] = False,
     wheels_path: Optional[str] = None,
+    additional_dependencies: Optional[List[str]] = None,
 ):
     try:
         if requirements is None and requirements_file is None:
@@ -235,13 +252,14 @@ def manage_venv(
 
         requirements = requirements or parse_requirements_txt(requirements_file)
 
-        venv = build_and_upgrade_venv(
+        build_and_upgrade_venv(
             requirements,
             envs_home,
             auto_upgrade,
             cloudsmith_url,
             wheels_path,
             update_from_local_wheels,
+            additional_dependencies,
         )
 
     except Exception as e:
@@ -308,6 +326,11 @@ parser.add_argument(
     default=None,
     help="Path to the directory containing the wheels.",
 )
+parser.add_argument(
+    "--additional-dependencies",
+    type=lambda s: [item for item in s.split(",")],
+    help="Any additional dependencies that need to be installed with the requirements.",
+)
 
 
 def main():
@@ -321,6 +344,7 @@ def main():
     test = parsed_args.test
     update_from_local_wheels = parsed_args.update_from_local_wheels
     wheels_path = parsed_args.wheels_path
+    additional_dependencies = parsed_args.additional_dependencies
     manage_venv(
         envs_home=envs_home,
         requirements=requirements,
@@ -331,6 +355,7 @@ def main():
         test=test,
         update_from_local_wheels=update_from_local_wheels,
         wheels_path=wheels_path,
+        additional_dependencies=additional_dependencies,
     )
 
 
