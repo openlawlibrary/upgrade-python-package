@@ -114,9 +114,9 @@ def upgrade_venv(
 def _switch_venvs(venv_path: str) -> None:
     """
     Switch the virtualenv environments after a successful upgrade,
-    since we first upgrade packages in a temporary `<venv_name>_backup` venv.
+    since we first upgrade packages in a temporary `<venv_name>_green` venv.
     """
-    backup_venv_path = Path(str(venv_path) + "_backup")
+    backup_venv_path = Path(str(venv_path) + "_green")
     temp_venv_path = Path(str(venv_path) + "_temp")
     shutil.move(venv_path, temp_venv_path)
     shutil.move(backup_venv_path, venv_path)
@@ -147,22 +147,23 @@ def create_venv(envs_home: str, requirements: str) -> str:
     return py_executable
 
 
-def _venv_exists(envs_home: str, requirements: str) -> bool:
-    return _get_venv_path(envs_home, requirements).exists()
-
-
 @contextmanager
-def temporary_venv(venv_path: str) -> str:
+def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
     """Create a temporary virtualenv and return the path to the python executable."""
     try:
-        backup_venv_path = Path(str(venv_path) + "_backup")
+        backup_venv_path = Path(
+            str(venv_path) + "_green"
+        )
+        if backup_venv_path.exists():
+            shutil.rmtree(backup_venv_path, onerror=on_rm_error)
+
         shutil.copytree(venv_path, str(backup_venv_path))
         yield get_venv_executable(backup_venv_path)
     except Exception as e:
         logging.error(f"Error occurred while creating temporary venv: {str(e)}")
         raise e
     finally:
-        if backup_venv_path.exists():
+        if backup_venv_path.exists() and not blue_green_deployment:
             shutil.rmtree(backup_venv_path, onerror=on_rm_error)
 
 
@@ -174,11 +175,16 @@ def build_and_upgrade_venv(
     wheels_path: Optional[str] = None,
     update_from_local_wheels: Optional[bool] = None,
     additional_dependencies: Optional[List[str]] = None,
+    blue_green_deployment: Optional[bool] = False,
 ) -> str:
     """Build and upgrade a virtualenv."""
-    venv_path = str(_get_venv_path(envs_home, requirements))
+    venv_path = (
+        str(_get_venv_path(envs_home, requirements))
+        if not blue_green_deployment
+        else str(_get_venv_path(envs_home, requirements)) + "_blue"
+    )
     error_message = None
-    if not _venv_exists(envs_home, requirements):
+    if not Path(venv_path).exists():
         auto_upgrade = True
         msg = "Requirements changed. Creating new virtualenv."
         print(msg)
@@ -194,7 +200,9 @@ def build_and_upgrade_venv(
     if auto_upgrade:
         requirements_obj = to_requirements_obj(requirements)
 
-        with temporary_venv(venv_path) as temp_venv_executable:
+        with temporary_upgrade_venv(
+            venv_path, blue_green_deployment
+        ) as temp_venv_executable:
             try:
                 response = upgrade_venv(
                     temp_venv_executable,
@@ -217,7 +225,8 @@ def build_and_upgrade_venv(
                 msg = f"Error occurred while upgrading {requirements_obj.name}"
                 logging.error(f"{msg} - {response_error_msg}")
 
-            _switch_venvs(venv_path)
+            if not blue_green_deployment:
+                _switch_venvs(venv_path)
 
     return py_executable, error_message
 
@@ -233,6 +242,7 @@ def manage_venv(
     update_from_local_wheels: Optional[bool] = False,
     wheels_path: Optional[str] = None,
     additional_dependencies: Optional[List[str]] = None,
+    blue_green_deployment: Optional[bool] = False,
 ):
     try:
         if requirements is None and requirements_file is None:
@@ -260,6 +270,7 @@ def manage_venv(
             wheels_path,
             update_from_local_wheels,
             additional_dependencies,
+            blue_green_deployment,
         )
 
     except Exception as e:
@@ -331,6 +342,9 @@ parser.add_argument(
     type=lambda s: [item for item in s.split(",")],
     help="Any additional dependencies that need to be installed with the requirements.",
 )
+parser.add_argument(
+    "--blue-green-deployment", action="store_true", help="Run in blue-green deployment"
+)
 
 
 def main():
@@ -345,6 +359,7 @@ def main():
     update_from_local_wheels = parsed_args.update_from_local_wheels
     wheels_path = parsed_args.wheels_path
     additional_dependencies = parsed_args.additional_dependencies
+    blue_green_deployment = parsed_args.blue_green_deployment
     manage_venv(
         envs_home=envs_home,
         requirements=requirements,
@@ -356,6 +371,7 @@ def main():
         update_from_local_wheels=update_from_local_wheels,
         wheels_path=wheels_path,
         additional_dependencies=additional_dependencies,
+        blue_green_deployment=blue_green_deployment,
     )
 
 
