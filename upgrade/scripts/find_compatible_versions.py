@@ -1,8 +1,9 @@
 import argparse
 import logging
+import json
 from typing import Any, List, Optional
 from urllib.parse import urljoin
-
+from enum import Enum
 import lxml.etree as et
 import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
@@ -15,6 +16,12 @@ from upgrade.scripts.upgrade_python_package import (
 )
 from upgrade.scripts.utils import get_venv_executable
 from upgrade.scripts.validations import is_cloudsmith_url_valid
+
+
+class UpgradeStatus(Enum):
+    AVAILABLE = "AVAILABLE"
+    AT_LATEST_VERSION = "AT_LATEST_VERSION"
+    ERROR = "ERROR"
 
 
 def _get_package_index_html(cloudsmith_url: str, package_name: str) -> str:
@@ -87,6 +94,7 @@ def find_compatible_versions(
     log_location: Optional[str] = None,
     test: Optional[bool] = None,
 ):
+    response_status = {}
     try:
         if requirements is None and requirements_file is None:
             raise Exception("Either requirements or requirements_file is required.")
@@ -106,12 +114,19 @@ def find_compatible_versions(
         upgrade_version = get_compatible_version(
             to_requirements_obj(requirements), venv_path, cloudsmith_url
         )
-        print(upgrade_version)
-        logging.info(f"Compatible version: {upgrade_version}")
-
+        if upgrade_version:
+            response_status["responseStatus"] = UpgradeStatus.AVAILABLE.value
+            logging.info(f"Found compatible upgrade version: {upgrade_version}")
+        else:
+            response_status["responseStatus"] = UpgradeStatus.AT_LATEST_VERSION.value
+            logging.info("At latest upgrade version")
     except Exception as e:
+        response_status["responseStatus"] = UpgradeStatus.ERROR.value
         logging.error(e)
         raise e
+    finally:
+        response = json.dumps(response_status)
+        print(response)
 
 
 parser = argparse.ArgumentParser()
@@ -126,7 +141,6 @@ parser.add_argument(
 parser.add_argument(
     "--requirements-file",
     action="store",
-    required=True,
     type=str,
     help="Path to the requirements.txt file within a repository."
     + "Requirements file is passed to pip install -r <requirements_file>.",
