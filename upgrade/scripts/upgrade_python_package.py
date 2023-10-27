@@ -305,7 +305,10 @@ def is_development_cloudsmith(cloudsmith_url):
     return development_index_re.search(pip_config) is not None
 
 
-def is_package_already_installed(package, py_executable=sys.executable):
+def is_package_already_installed(package, py_executable=None):
+    if py_executable is None:
+        py_executable = sys.executable
+
     results = pip("list", "--format", "json", py_executable=py_executable)
     try:
         decoder = json.JSONDecoder()
