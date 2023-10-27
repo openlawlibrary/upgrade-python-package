@@ -4,20 +4,32 @@ import re
 import shutil
 import subprocess
 import sys
+import json
 from contextlib import contextmanager
+from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional
 
-from upgrade.scripts.upgrade_python_package import run, pip, is_development_cloudsmith
+from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
+from upgrade.scripts.upgrade_python_package import is_development_cloudsmith, pip, run
 from upgrade.scripts.utils import (
     create_directory,
-    on_rm_error,
     get_venv_executable,
+    on_rm_error,
 )
-from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
-SYSTEM_DEPENDENCIES = ["pip", "setuptools", "upgrade-python-package"]
+
+class VenvUpgradeStatus(Enum):
+    UPGRADED = "UPGRADED"
+    ERROR = "ERROR"
+
+
+SYSTEM_DEPENDENCIES = [
+    "pip",
+    "setuptools",
+    "upgrade-python-package",
+]  # TODO: should this be a parameter?
 upgrade_success_re = re.compile(r'{"success": (true|false)')
 response_output_re = re.compile(r'"responseOutput": "(.*?)"')
 
@@ -151,9 +163,7 @@ def create_venv(envs_home: str, requirements: str) -> str:
 def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
     """Create a temporary virtualenv and return the path to the python executable."""
     try:
-        backup_venv_path = Path(
-            str(venv_path) + "_green"
-        )
+        backup_venv_path = Path(str(venv_path).replace("_blue", "") + "_green")
         if backup_venv_path.exists():
             shutil.rmtree(backup_venv_path, onerror=on_rm_error)
 
@@ -244,6 +254,7 @@ def manage_venv(
     additional_dependencies: Optional[List[str]] = None,
     blue_green_deployment: Optional[bool] = False,
 ):
+    response_status = {}
     try:
         if requirements is None and requirements_file is None:
             raise Exception("Either requirements or requirements_file is required.")
@@ -272,10 +283,14 @@ def manage_venv(
             additional_dependencies,
             blue_green_deployment,
         )
-
+        response_status["responseStatus"] = VenvUpgradeStatus.UPGRADED.value
     except Exception as e:
         logging.error(e)
+        response_status["responseStatus"] = VenvUpgradeStatus.ERROR.value
         raise e
+    finally:
+        response = json.dumps(response_status)
+        print(response)
 
 
 parser = argparse.ArgumentParser()

@@ -18,7 +18,7 @@ from upgrade.scripts.utils import get_venv_executable
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 
-class UpgradeStatus(Enum):
+class CompatibleUpgradeStatus(Enum):
     AVAILABLE = "AVAILABLE"
     AT_LATEST_VERSION = "AT_LATEST_VERSION"
     ERROR = "ERROR"
@@ -115,13 +115,13 @@ def find_compatible_versions(
             to_requirements_obj(requirements), venv_path, cloudsmith_url
         )
         if upgrade_version:
-            response_status["responseStatus"] = UpgradeStatus.AVAILABLE.value
+            response_status["responseStatus"] = CompatibleUpgradeStatus.AVAILABLE.value
             logging.info(f"Found compatible upgrade version: {upgrade_version}")
         else:
-            response_status["responseStatus"] = UpgradeStatus.AT_LATEST_VERSION.value
+            response_status["responseStatus"] = CompatibleUpgradeStatus.AT_LATEST_VERSION.value
             logging.info("At latest upgrade version")
     except Exception as e:
-        response_status["responseStatus"] = UpgradeStatus.ERROR.value
+        response_status["responseStatus"] = CompatibleUpgradeStatus.ERROR.value
         logging.error(e)
         raise e
     finally:
