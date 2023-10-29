@@ -28,6 +28,7 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
     envs_home,
     wheels_dir,
     mock_cloudsmith_url_valid,
+    mock_install_upgrade_python_package,
 ):
     cut = build_and_upgrade_venv
     cut(

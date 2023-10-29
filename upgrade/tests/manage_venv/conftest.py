@@ -13,6 +13,7 @@ from ..conftest import REPOSITORY_WHEELS_PATH, original_executable
 
 THIS_FOLDER = Path(__file__).parent
 ENVIRONMENTS_DIR = THIS_FOLDER.parent / "Environments"
+UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH = THIS_FOLDER.parent.parent.parent
 
 
 def _create_venv(path, version, venv_name=None):
@@ -31,6 +32,7 @@ def _create_venv(path, version, venv_name=None):
         "--find-links",
         str(REPOSITORY_WHEELS_PATH),
     )
+    install_upgrade_python_package(venv_executable, None)
 
 
 def env_fixture(make_dir=True):
@@ -64,6 +66,10 @@ def mock_cloudsmith_url_valid():
     with patch("upgrade.scripts.validations.is_cloudsmith_url_valid", lambda *_,: True):
         yield
 
+@pytest.fixture()
+def mock_install_upgrade_python_package():
+    with patch("upgrade.scripts.manage_venv.install_upgrade_python_package", install_upgrade_python_package):
+        yield
 
 @env_fixture()
 def initial_v2_0_0_venv(request, path=""):
@@ -105,3 +111,13 @@ def mock_package_index_html():
         lambda *_,: index_html_page,
     ):
         yield
+
+def install_upgrade_python_package(venv_executable, upgrade_python_package_version):
+    run(
+        venv_executable,
+        "-m",
+        "pip",
+        "install",
+        "-e",
+        f"{str(UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH)}"
+    )
