@@ -35,7 +35,7 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
         dependency_to_install,
         envs_home,
         auto_upgrade=False,
-        cloudsmith_url="",
+        cloudsmith_url="cloudsmith_url",
         wheels_path=str(wheels_dir),
         update_from_local_wheels=True,
     )

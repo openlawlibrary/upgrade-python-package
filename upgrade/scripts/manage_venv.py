@@ -98,9 +98,9 @@ def upgrade_venv(
     wheels_path: Optional[str],
     update_from_local_wheels: Optional[bool],
     additional_dependencies: Optional[List[str]],
+    log_location: Optional[str] = None,
 ) -> str:
     try:
-        log_path = Path("D:\\OLL\\upgrade-python-package\\venv.log")
 
         result = ""
         for dependency in [requirements_obj.name] + additional_dependencies:
@@ -114,13 +114,15 @@ def upgrade_venv(
             if is_development_cloudsmith(cloudsmith_url):
                 upgrade_args.append("'--pre'")
             else:
-                upgrade_args.append(f"--version={requirements_obj.specifier}")
+                upgrade_args.append(f'--version="{requirements_obj.specifier}"')
+
+            if log_location:
+                upgrade_args.append(f"--log-location={log_location}")
 
             upgrade_args.extend(
                 [
                     f"--cloudsmith-url={cloudsmith_url}",
                     "--skip-post-install",
-                    f"--log-location={str(log_path)}",
                     "--format-output",
                 ]
             )
@@ -206,6 +208,7 @@ def build_and_upgrade_venv(
     additional_dependencies: Optional[List[str]] = None,
     blue_green_deployment: Optional[bool] = False,
     upgrade_python_package_version: Optional[str] = None,
+    log_location: Optional[str] = None,
 ) -> str:
     """Build and upgrade a virtualenv."""
     venv_path = (
@@ -243,6 +246,7 @@ def build_and_upgrade_venv(
                     wheels_path,
                     update_from_local_wheels,
                     additional_dependencies or [],
+                    log_location,
                 )
                 logging.info(response)
             except Exception as e:
@@ -306,6 +310,7 @@ def manage_venv(
             additional_dependencies,
             blue_green_deployment,
             upgrade_python_package_version,
+            log_location,
         )
         response_status["responseStatus"] = VenvUpgradeStatus.UPGRADED.value
     except Exception as e:
