@@ -38,6 +38,8 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
         cloudsmith_url="cloudsmith_url",
         wheels_path=str(wheels_dir),
         update_from_local_wheels=True,
+        blue_green_deployment=False,
+        log_location=Path(envs_home, "manage_venv.log"),
     )
     venv_path = Path(envs_home, dependency_to_install)
 

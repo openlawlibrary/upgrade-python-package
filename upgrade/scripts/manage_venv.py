@@ -114,7 +114,7 @@ def upgrade_venv(
             if is_development_cloudsmith(cloudsmith_url):
                 upgrade_args.append("'--pre'")
             else:
-                upgrade_args.append(f'--version="{requirements_obj.specifier}"')
+                upgrade_args.append(f"--version={str(requirements_obj.specifier)}")
 
             if log_location:
                 upgrade_args.append(f"--log-location={log_location}")
