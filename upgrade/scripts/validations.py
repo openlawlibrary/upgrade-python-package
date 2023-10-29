@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_cloudsmith_url_valid(cloudsmith_url: str) -> None:
-    import pip._vendor.requests as requests
+    import requests
 
     response = requests.head(cloudsmith_url)
     if response.status_code != 200:
