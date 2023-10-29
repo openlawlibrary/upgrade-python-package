@@ -94,14 +94,13 @@ def install_upgrade_python_package(
 def upgrade_venv(
     venv_executable: str,
     requirements_obj: Any,
-    cloudsmith_url: str,
+    cloudsmith_url: Optional[str],
     wheels_path: Optional[str],
     update_from_local_wheels: Optional[bool],
     additional_dependencies: Optional[List[str]],
     log_location: Optional[str] = None,
 ) -> str:
     try:
-
         result = ""
         for dependency in [requirements_obj.name] + additional_dependencies:
             upgrade_args = [
@@ -110,7 +109,8 @@ def upgrade_venv(
                 "upgrade.scripts.upgrade_python_package",
                 dependency,
             ]
-
+            if cloudsmith_url:
+                upgrade_args.append(f"--cloudsmith-url={cloudsmith_url}")
             if is_development_cloudsmith(cloudsmith_url):
                 upgrade_args.append("'--pre'")
             else:
@@ -121,7 +121,6 @@ def upgrade_venv(
 
             upgrade_args.extend(
                 [
-                    f"--cloudsmith-url={cloudsmith_url}",
                     "--skip-post-install",
                     "--format-output",
                 ]
@@ -202,7 +201,7 @@ def build_and_upgrade_venv(
     requirements: str,
     envs_home: str,
     auto_upgrade: bool,
-    cloudsmith_url: str,
+    cloudsmith_url: Optional[str] = None,
     wheels_path: Optional[str] = None,
     update_from_local_wheels: Optional[bool] = None,
     additional_dependencies: Optional[List[str]] = None,
