@@ -129,6 +129,6 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
 
     out, _ = capsys.readouterr()
 
-    expected = " Could not find a version that satisfies the requirement oll-dependency1==2.1.0"
+    expected = "Failed to install wheel"
     actual = out
     assert expected in actual

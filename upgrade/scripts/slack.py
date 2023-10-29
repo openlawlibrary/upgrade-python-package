@@ -1,6 +1,6 @@
 import os
 
-import pip._vendor.requests as requests
+import requests
 
 from .exceptions import SlackError
 

@@ -19,7 +19,7 @@ def get_venv_executable(venv_path: str) -> str:
     if is_windows():
         return str(Path(venv_path, "Scripts", "python.exe").absolute())
     else:
-        return str(Path(venv_path, "bin", "python").absolute())
+        return str(Path(venv_path, "bin", "python3").absolute())
 
 
 def is_windows() -> bool:

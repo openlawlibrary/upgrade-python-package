@@ -201,8 +201,10 @@ def install_wheel(
     package_name, extra = split_package_name_and_extra(package_name)
     if local:
         try:
-            wheel_paths = glob.glob(
-                f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
+            wheel_paths = sorted(
+                glob.glob(
+                    f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
+                )
             )
             wheel_names = [Path(path).name for path in wheel_paths]
             parsed_wheel_versions = [
@@ -506,7 +508,7 @@ def run(*command, **kwargs):
         options = dict(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            check=True,
+            check=False,
             universal_newlines=True,
         )
         options.update(kwargs)

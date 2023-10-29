@@ -120,10 +120,12 @@ def mock_package_index_html():
 
 def install_upgrade_python_package(venv_executable, upgrade_python_package_version):
     run(
-        venv_executable,
-        "-m",
-        "pip",
-        "install",
-        "-e",
-        f"{str(UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH)}",
+        *([
+            venv_executable,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            f"{str(UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH)}",
+        ])
     )

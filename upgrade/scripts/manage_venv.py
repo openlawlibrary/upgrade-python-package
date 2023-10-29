@@ -34,7 +34,7 @@ def ensure_pip(venv_executable, *args, **kwargs):
     try:
         return run(*((venv_executable, "-m", "ensurepip") + args), **kwargs)
     except subprocess.CalledProcessError as e:
-        logging.error("Error occurred while running pip in venv %s", str(e))
+        logging.error(f"Error occurred while running pip in venv {str(e)}")
         raise e
 
 
@@ -42,7 +42,7 @@ def venv(*args, **kwargs):
     try:
         return run(*((sys.executable, "-m", "venv", "--without-pip") + args), **kwargs)
     except subprocess.CalledProcessError as e:
-        logging.error("Error occurred while creating venv %s", str(e))
+        logging.error(f"Error occurred while creating venv {str(e)}" )
         raise e
 
 
@@ -130,7 +130,7 @@ def upgrade_venv(
             if update_from_local_wheels:
                 upgrade_args.append("--update-from-local-wheels")
 
-            result += run(*(upgrade_args))
+            result += run(*(upgrade_args), check=False)
 
         return result
     except Exception as e:
