@@ -509,7 +509,7 @@ def run(*command, **kwargs):
         options = dict(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            check=False,
+            check=kwargs.pop("check", True),
             universal_newlines=True,
         )
         options.update(kwargs)
