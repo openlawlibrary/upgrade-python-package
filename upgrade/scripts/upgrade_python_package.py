@@ -88,12 +88,13 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
             return str(constraints_file_path)
         raise ImportError
     except (TypeError, ImportError, AttributeError):
-        site_packages_dir = (
-            Path(site_packages_dir)
-            if site_packages_dir
-            else Path(site.getsitepackages()[1])
-        )
-
+        if site_packages_dir:
+            site_packages_dir = Path(site_packages_dir)
+        else:
+            try:
+                site_packages_dir = Path(site.getsitepackages()[1])
+            except IndexError:
+                site_packages_dir = Path(site.getsitepackages()[0])
         package_name = package_name.replace("-", "_")
         constraints_file_path = site_packages_dir / package_name / "constraints.txt"
         if os.path.exists(constraints_file_path):
