@@ -49,15 +49,6 @@ def venv(*args, **kwargs):
 def install_system_dependencies(venv_executable: str) -> None:
     for dependency in SYSTEM_DEPENDENCIES:
         try:
-            # # # FIXME: for local testing
-            # if "upgrade-python-package" in dependency:
-            #     pip(
-            #         "install",
-            #         "-e",
-            #         "D:\\OLL\\upgrade-python-package",
-            #         py_executable=venv_executable,
-            #     )
-            # else:
             pip(
                 "install",
                 "--upgrade",
@@ -78,6 +69,14 @@ def install_upgrade_python_package(
     if upgrade_python_package_version:
         upgrade_python_package += f"=={upgrade_python_package_version}"
     try:
+        # # # NOTE: for local testing of unreleased upgrade-python-package,
+        # # use the following pip install command instead
+        # pip(
+        #     "install",
+        #     "-e",
+        #     "D:\\OLL\\upgrade-python-package",
+        #     py_executable=venv_executable,
+        # )
         pip(
             "install",
             "--upgrade",
@@ -109,12 +108,13 @@ def upgrade_venv(
                 "upgrade.scripts.upgrade_python_package",
                 dependency,
             ]
-            if cloudsmith_url:
-                upgrade_args.append(f"--cloudsmith-url={cloudsmith_url}")
             if is_development_cloudsmith(cloudsmith_url):
                 upgrade_args.append("'--pre'")
             else:
                 upgrade_args.append(f"--version={str(requirements_obj.specifier)}")
+
+            if cloudsmith_url:
+                upgrade_args.append(f"--cloudsmith-url={cloudsmith_url}")
 
             if log_location:
                 upgrade_args.append(f"--log-location={log_location}")
