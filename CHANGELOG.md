@@ -10,11 +10,18 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Added
 
+- Added venv management script built on top of upgrade-python-package script ([#15])
+- Added `find-compatible-versions` script which for a given venv, determines whether a new compatible update is available ([#15])
+
 ### Changed
+
+- Drop Python 3.6 support, add support for Python 3.11, 3.12 ([#15])
 
 ### Fixed
 
 ### Removed
+
+[#15]: https://github.com/openlawlibrary/upgrade-python-package/pull/15
 
 ## [0.6.0]
 
