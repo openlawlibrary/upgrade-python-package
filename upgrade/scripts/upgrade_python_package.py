@@ -710,7 +710,6 @@ def upgrade_python_package(
         while len(logging.root.handlers) > 0:
             logging.root.removeHandler(logging.root.handlers[-1])
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        # response_err = response_err if not success else ""
         response = json.dumps(
             {"success": success, "responseOutput": response_output}
         )
