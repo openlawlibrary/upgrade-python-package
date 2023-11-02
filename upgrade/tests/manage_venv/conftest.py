@@ -7,7 +7,7 @@ from mock import patch
 from upgrade.tests.utils import remove_directory
 from upgrade.scripts.upgrade_python_package import run
 
-from upgrade.scripts.utils import get_venv_executable
+from upgrade.scripts.utils import get_venv_executable, is_windows
 
 from ..conftest import REPOSITORY_WHEELS_PATH, original_executable
 
@@ -15,6 +15,11 @@ THIS_FOLDER = Path(__file__).parent
 ENVIRONMENTS_DIR = THIS_FOLDER.parent / "Environments"
 UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH = THIS_FOLDER.parent.parent.parent
 
+EXPECTED_VENV_FILES = (
+    ["pyvenv.cfg", "Scripts", "Lib"]
+    if is_windows()
+    else ["pyvenv.cfg", "bin", "lib", "include"]
+)
 
 def _create_venv(path, version, venv_name=None):
     venv_name = venv_name or f"oll-test-top-level~={version}"

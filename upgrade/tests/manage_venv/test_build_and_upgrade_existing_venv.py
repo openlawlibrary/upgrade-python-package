@@ -5,6 +5,7 @@ from upgrade.scripts.manage_venv import (
 )
 from upgrade.scripts.upgrade_python_package import pip
 from upgrade.scripts.utils import get_venv_executable
+from upgrade.tests.manage_venv.test_utils import assert_dependencies_installed_in_venv
 
 
 def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_enabled_expect_venv_upgraded_to_v2_0_1(
@@ -20,7 +21,6 @@ def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_ena
         auto_upgrade=True,
         wheels_path=str(wheels_dir),
         update_from_local_wheels=True,
-        blue_green_deployment=False,
         log_location=Path(envs_home, "manage_venv.log"),
     )
 
@@ -29,23 +29,7 @@ def test_build_and_upgrade_venv_where_v2_0_0_venv_exists_and_auto_upgrade_is_ena
 
     pip("check", py_executable=venv_executable)
 
-    dependencies_from_venv = pip(
-        "list",
-        "--format=freeze",
-        "--exclude-editable",
-        py_executable=venv_executable,
-    ).splitlines()
-
-    expected_packages = {
-        f"oll-test-top-level=={expected_installed_version}",
-        f"oll-dependency1=={expected_installed_version}",
-        f"oll-dependency2=={expected_installed_version}",
-    }
-    actual_packages = set(dependencies_from_venv)
-
-    expected = True
-    actual = expected_packages.issubset(actual_packages)
-    assert actual == expected
+    assert_dependencies_installed_in_venv(venv_executable, expected_installed_version)
 
 
 def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_disabled_expect_venv_unchanged(
@@ -91,17 +75,4 @@ def test_build_and_upgrade_venv_where_v2_0_1_venv_exists_and_auto_upgrade_is_ena
 
     pip("check", py_executable=venv_executable)
 
-    dependencies_from_venv = pip(
-        "list", "--format=freeze", "--exclude-editable", py_executable=venv_executable
-    ).splitlines()
-
-    expected_packages = {
-        f"oll-test-top-level=={expected_installed_version}",
-        f"oll-dependency1=={expected_installed_version}",
-        f"oll-dependency2=={expected_installed_version}",
-    }
-    actual_packages = set(dependencies_from_venv)
-
-    expected = True
-    actual = expected_packages.issubset(actual_packages)
-    assert actual == expected
+    assert_dependencies_installed_in_venv(venv_executable, expected_installed_version)

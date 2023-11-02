@@ -3,14 +3,9 @@ from pathlib import Path
 import pytest
 
 from upgrade.scripts.manage_venv import build_and_upgrade_venv
-from upgrade.scripts.upgrade_python_package import pip
-from upgrade.scripts.utils import get_venv_executable, is_windows
-
-EXPECTED_VENV_FILES = (
-    ["pyvenv.cfg", "Scripts", "Lib"]
-    if is_windows()
-    else ["pyvenv.cfg", "bin", "lib", "include"]
-)
+from upgrade.scripts.utils import get_venv_executable
+from upgrade.tests.manage_venv.conftest import EXPECTED_VENV_FILES
+from upgrade.tests.manage_venv.test_utils import assert_dependencies_installed_in_venv
 
 
 @pytest.mark.parametrize(
@@ -37,7 +32,6 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
         auto_upgrade=False,
         wheels_path=str(wheels_dir),
         update_from_local_wheels=True,
-        blue_green_deployment=False,
         log_location=Path(envs_home, "manage_venv.log"),
     )
     venv_path = Path(envs_home, dependency_to_install)
@@ -50,20 +44,4 @@ def test_build_and_upgrade_venv_where_venv_did_not_exist_and_auto_upgrade_is_dis
 
     venv_executable = get_venv_executable(venv_path)
 
-    dependencies_from_venv = pip(
-        "list",
-        "--format=freeze",
-        "--exclude-editable",
-        py_executable=venv_executable,
-    ).splitlines()
-
-    expected_packages = {
-        f"oll-test-top-level=={expected_installed_version}",
-        f"oll-dependency1=={expected_installed_version}",
-        f"oll-dependency2=={expected_installed_version}",
-    }
-    actual_packages = set(dependencies_from_venv)
-
-    expected = True
-    actual = expected_packages.issubset(actual_packages)
-    assert actual == expected
+    assert_dependencies_installed_in_venv(venv_executable, expected_installed_version)
