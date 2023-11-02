@@ -183,7 +183,7 @@ def create_venv(
 def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
     """Create a temporary virtualenv and return the path to the python executable."""
     try:
-        backup_venv_path = Path(str(venv_path).replace("_blue", "") + "_green")
+        backup_venv_path = Path(str(venv_path) + "_green")
         if backup_venv_path.exists():
             shutil.rmtree(backup_venv_path, onerror=on_rm_error)
 
@@ -210,11 +210,7 @@ def build_and_upgrade_venv(
     log_location: Optional[str] = None,
 ) -> str:
     """Build and upgrade a virtualenv."""
-    venv_path = (
-        str(_get_venv_path(envs_home, requirements))
-        if not blue_green_deployment
-        else str(_get_venv_path(envs_home, requirements)) + "_blue"
-    )
+    venv_path = str(_get_venv_path(envs_home, requirements))
     error_message = None
     if not Path(venv_path).exists():
         auto_upgrade = True
