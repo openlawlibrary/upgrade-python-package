@@ -377,13 +377,20 @@ def attempt_to_install_version(
     attempt to install a specific version of the given package
     """
     resp = ""
+    pip_args = []
+    if update_all:
+        pip_args.append("--upgrade")
+    args = tuple(arg for arg in pip_args)
     try:
         resp = install_wheel(
             package_install_cmd,
             cloudsmith_url,
-            version_cmd=version,
-            update_all=update_all,
-            slack_webhook_url=slack_webhook_url,
+            False,
+            None,
+            version,
+            update_all,
+            slack_webhook_url,
+            *args,
         )
     except Exception as e:
         logging.info(f"Could not find {package_install_cmd} {version}")

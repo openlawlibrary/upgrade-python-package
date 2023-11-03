@@ -111,7 +111,9 @@ def upgrade_venv(
             if is_development_cloudsmith(cloudsmith_url):
                 upgrade_args.append("'--pre'")
             else:
-                upgrade_args.append(f"--version={str(requirements_obj.specifier)}")
+                specifier = str(requirements_obj.specifier)
+                if len(specifier) > 0:
+                    upgrade_args.append(f"--version={specifier}")
 
             if cloudsmith_url:
                 upgrade_args.append(f"--cloudsmith-url={cloudsmith_url}")
@@ -123,6 +125,7 @@ def upgrade_venv(
                 [
                     "--skip-post-install",
                     "--format-output",
+                    "--update-all",
                 ]
             )
             if wheels_path:
