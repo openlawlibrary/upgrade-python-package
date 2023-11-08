@@ -457,8 +457,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--test",
     action="store_true",
-    help="Determines whether log messages will be output to stdout "
-    + "or written to a log file",
+    help="Determines whether log messages will be output to stdout, written to a log file and is used to determine logging level.",
 )
 parser.add_argument(
     "--skip-post-install",

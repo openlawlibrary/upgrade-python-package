@@ -48,9 +48,12 @@ def get_compatible_upgrade_versions(
     parsed_packages_versions = [
         parse_wheel_filename(tag_el.text)[1] for tag_el in anchor_tags_el
     ]
+    logging.debug(f"Parsed packages versions: {parsed_packages_versions}")
+
     compatible_versions = filter_versions(
         requirements_obj.specifier, parsed_packages_versions
     )
+    logging.debug(f"Found compatible versions: {compatible_versions}")
 
     return sorted(compatible_versions, reverse=True)
 
@@ -77,7 +80,7 @@ def get_compatible_version(
     installed_version = get_installed_version(requirements_obj, venv_executable)
     if not installed_version:
         raise Exception(f"Package {requirements_obj.name} is not installed")
-    print(f"installed_version: {installed_version}")
+    logging.info(f"Found installed version: {installed_version}")
 
     upgrade_versions = get_compatible_upgrade_versions(requirements_obj, cloudsmith_url)
     for upgrade_version in upgrade_versions:
@@ -166,8 +169,7 @@ parser.add_argument("--log-location", help="Specifies where to store the log fil
 parser.add_argument(
     "--test",
     action="store_true",
-    help="Determines whether log messages will be output to stdout "
-    + "or written to a log file",
+    help="Determines whether log messages will be output to stdout, written to a log file and is used to determine logging level.",
 )
 
 
