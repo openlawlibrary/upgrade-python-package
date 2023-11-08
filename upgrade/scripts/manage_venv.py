@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
-from upgrade.scripts.upgrade_python_package import is_development_cloudsmith, pip, run
 from upgrade.scripts.utils import (
+    is_development_cloudsmith,
+    run,
+    pip,
     create_directory,
     get_venv_executable,
     on_rm_error,

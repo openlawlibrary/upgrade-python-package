@@ -1,19 +1,21 @@
 import argparse
-import logging
 import json
+import logging
+from enum import Enum
 from typing import Any, List, Optional
 from urllib.parse import urljoin
-from enum import Enum
+
 import lxml.etree as et
 import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 from pip._vendor.packaging.version import Version
 
-from upgrade.scripts.requirements import filter_versions, parse_requirements_txt, to_requirements_obj
-from upgrade.scripts.upgrade_python_package import (
-    is_package_already_installed,
+from upgrade.scripts.requirements import (
+    filter_versions,
+    parse_requirements_txt,
+    to_requirements_obj,
 )
-from upgrade.scripts.utils import get_venv_executable
+from upgrade.scripts.utils import get_venv_executable, is_package_already_installed
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 
@@ -117,7 +119,9 @@ def find_compatible_versions(
             response_status["responseStatus"] = CompatibleUpgradeStatus.AVAILABLE.value
             logging.info(f"Found compatible upgrade version: {upgrade_version}")
         else:
-            response_status["responseStatus"] = CompatibleUpgradeStatus.AT_LATEST_VERSION.value
+            response_status[
+                "responseStatus"
+            ] = CompatibleUpgradeStatus.AT_LATEST_VERSION.value
             logging.info("At latest upgrade version")
     except Exception as e:
         response_status["responseStatus"] = CompatibleUpgradeStatus.ERROR.value

@@ -3,20 +3,24 @@ import glob
 import json
 import logging
 import os
-import re
 import site
-import subprocess
-import sys
 from importlib import util
 from pathlib import Path
 
-from upgrade.scripts.exceptions import PipFormatDecodeFailed
-from upgrade.scripts.slack import send_slack_notification
-from upgrade.scripts.validations import is_cloudsmith_url_valid
-from upgrade.scripts.requirements import filter_versions
-
-from pip._vendor.packaging.utils import parse_wheel_filename
 from pip._vendor.packaging.specifiers import SpecifierSet
+from pip._vendor.packaging.utils import parse_wheel_filename
+
+from upgrade.scripts.exceptions import PipFormatDecodeFailed
+from upgrade.scripts.requirements import filter_versions
+from upgrade.scripts.slack import send_slack_notification
+from upgrade.scripts.utils import (
+    is_development_cloudsmith,
+    is_package_already_installed,
+    pip,
+    run,
+    run_python_module,
+)
+from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
@@ -279,7 +283,7 @@ def install_wheel(
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
-                package_name = package_name.split("==")[0] # TODO: why ==?
+                package_name = package_name.split("==")[0]  # TODO: why ==?
                 reinstall_args = [
                     "install",
                     "--no-deps",
@@ -294,43 +298,6 @@ def install_wheel(
             else:
                 raise
     return resp
-
-
-def is_development_cloudsmith(cloudsmith_url):
-    if cloudsmith_url is not None:
-        return development_url_re.search(cloudsmith_url) is not None
-    try:
-        pip_config = pip("config", "list")
-    except subprocess.CalledProcessError as e:
-        logging.warning("config command not found.")
-        pip_config = ""
-
-    return development_index_re.search(pip_config) is not None
-
-
-def is_package_already_installed(package, py_executable=None):
-    if py_executable is None:
-        py_executable = sys.executable
-
-    results = pip("list", "--format", "json", py_executable=py_executable)
-    try:
-        decoder = json.JSONDecoder()
-        parsed_results, _ = decoder.raw_decode(results)
-    except json.JSONDecodeError:
-        msg = "Error occurred while decoding pip list to json"
-        logging.error(msg)
-        raise PipFormatDecodeFailed(msg)
-    package = package.split("==")[0] if "==" in package else package
-    found_package = [
-        (element["name"], element["version"])
-        for element in parsed_results
-        if element["name"] == package
-    ]
-    if found_package:
-        _, version = found_package.pop()
-        return version
-    logging.info(f"Package not found: ${package}")
-    return None
 
 
 def upgrade_from_local_wheel(
@@ -360,10 +327,6 @@ def upgrade_from_local_wheel(
         module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
     return "Successfully installed" in resp, resp
-
-
-development_url_re = re.compile(r"([^']+development[^']+)")
-development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
 
 
 def attempt_to_install_version(
@@ -448,13 +411,6 @@ def reload_uwsgi_app(package_name):
     run("touch", "--no-dereference", ini_file_path)
 
 
-def pip(*args, **kwargs):
-    """
-    Run pip using the python executable used to run this function
-    """
-    return run_python_module("pip", *args, **kwargs)
-
-
 def run_initial_post_install(package_name, *args):
     file_name = f'{package_name.replace("-", "_")}_run_post_install'
     file_path = os.path.join("/opt/var", file_name)
@@ -467,66 +423,10 @@ def run_initial_post_install(package_name, *args):
         os.remove(file_path)
 
 
-def run_python_module(module_name, *args, **kwargs):
-    """
-    Run a python module using the python executable used to run this function
-    """
-    if not args and not kwargs:
-        # check for arguments stored in an environment variable UPDATE_MODULE_NAME
-        var_name = f"UPDATE_{module_name.upper()}"
-        args = tuple(os.environ.get(var_name, "").split())
-    logging.info("running %s python module", module_name)
-    py_executable = kwargs.pop("py_executable", sys.executable)
-    try:
-        return run(*((py_executable, "-m", module_name) + args), **kwargs)
-    except subprocess.CalledProcessError as e:
-        logging.error("Error occurred while running module %s: %s", module_name, str(e))
-        raise e
-
 def run_module_and_reload_uwsgi_app(module_name, *args):
     run_python_module(module_name, *args)
     package_name = module_name.replace("_", "-")
     reload_uwsgi_app(package_name)
-
-
-def run(*command, **kwargs):
-    """Run a command and return its output"""
-    if len(command) == 1 and isinstance(command[0], str):
-        command = command[0].split()
-    print(*command)
-    command = [word.format(**os.environ) for word in command]
-    try:
-        options = dict(
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=kwargs.pop("check", True),
-            universal_newlines=True,
-        )
-        options.update(kwargs)
-        completed = subprocess.run(command, **options)
-    except subprocess.CalledProcessError as err:
-        logging.warning('Error occurred while running command "%s"', *command)
-        if err.stdout:
-            print(err.stdout)
-            logging.warning(err.stdout)
-        if err.stderr:
-            print(err.stderr)
-            logging.warning(err.stderr)
-        print(
-            'Command "{}" returned non-zero exit status {}'.format(
-                " ".join(command), err.returncode
-            )
-        )
-        logging.warning(
-            'Command "%s" returned non-zero exit status %s',
-            " ".join(command),
-            err.returncode,
-        )
-        raise err
-    if completed.stdout:
-        print(completed.stdout)
-        logging.info("Completed. Output: %s", completed.stdout)
-    return completed.stdout.rstrip() if completed.returncode == 0 else None
 
 
 def split_package_name_and_extra(package_install_cmd):
@@ -700,9 +600,7 @@ def upgrade_python_package(
         while len(logging.root.handlers) > 0:
             logging.root.removeHandler(logging.root.handlers[-1])
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        response = json.dumps(
-            {"success": success, "responseOutput": response_output}
-        )
+        response = json.dumps({"success": success, "responseOutput": response_output})
         logging.info(response)
         print(response)
 
