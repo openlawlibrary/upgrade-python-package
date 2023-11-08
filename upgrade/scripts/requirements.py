@@ -1,11 +1,28 @@
 import logging
 
-from typing import Any
+from typing import Any, List
 from pathlib import Path
 
 from upgrade.scripts.exceptions import RequiredArgumentMissing
 
 logger = logging.getLogger(__name__)
+
+
+def filter_versions(
+    specifier_set: Any, parsed_packages_versions: List[Any]
+) -> List[str]:
+    """Returns a list of versions that are compatible with the `SpecifierSet`.
+
+    See https://packaging.pypa.io/en/latest/specifiers.html#specifiers for more details.
+
+    Example:
+        SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14", "2.5.15"]
+    or:
+        SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
+        returns ["2.5.14"]
+    """
+    return [str(version) for version in specifier_set.filter(parsed_packages_versions)]
 
 
 def parse_requirements_txt(

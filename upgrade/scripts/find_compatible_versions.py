@@ -9,9 +9,8 @@ import pip._vendor.requests as requests
 from pip._vendor.packaging.utils import parse_wheel_filename
 from pip._vendor.packaging.version import Version
 
-from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
+from upgrade.scripts.requirements import filter_versions, parse_requirements_txt, to_requirements_obj
 from upgrade.scripts.upgrade_python_package import (
-    filter_versions,
     is_package_already_installed,
 )
 from upgrade.scripts.utils import get_venv_executable

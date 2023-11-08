@@ -9,11 +9,11 @@ import subprocess
 import sys
 from importlib import util
 from pathlib import Path
-from typing import Any, List
 
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
 from upgrade.scripts.slack import send_slack_notification
 from upgrade.scripts.validations import is_cloudsmith_url_valid
+from upgrade.scripts.requirements import filter_versions
 
 from pip._vendor.packaging.utils import parse_wheel_filename
 from pip._vendor.packaging.specifiers import SpecifierSet
@@ -433,23 +433,6 @@ def attempt_upgrade(
     else:
         logging.info('"%s" package was already up-to-date.', package_install_cmd)
     return was_upgraded, resp
-
-
-def filter_versions(
-    specifier_set: Any, parsed_packages_versions: List[Any]
-) -> List[str]:
-    """Returns a list of versions that are compatible with the `SpecifierSet`.
-
-    See https://packaging.pypa.io/en/latest/specifiers.html#specifiers for more details.
-
-    Example:
-        SpecifierSet("~=2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
-        returns ["2.5.14", "2.5.15"]
-    or:
-        SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
-        returns ["2.5.14"]
-    """
-    return [str(version) for version in specifier_set.filter(parsed_packages_versions)]
 
 
 def reload_uwsgi_app(package_name):

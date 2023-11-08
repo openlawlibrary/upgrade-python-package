@@ -1,7 +1,7 @@
 import pytest
 from pip._vendor.packaging.specifiers import SpecifierSet
 
-from upgrade.scripts.upgrade_python_package import filter_versions
+from upgrade.scripts.requirements import filter_versions
 
 
 @pytest.mark.parametrize(
