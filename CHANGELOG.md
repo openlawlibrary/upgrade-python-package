@@ -118,12 +118,12 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
 [Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.6.0...HEAD
-[0.6.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.6.0
-[0.5.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.5.0
-[0.4.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.4.0
-[0.3.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.3.0
-[0.2.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.2.0
-[0.1.0]: https://github.com/openlawlibrary/upgrade-python-package/tree/0.1.0
+[0.6.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.5.0...0.6.0
+[0.5.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.4.0...0.5.0
+[0.4.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.3.0...0.4.0
+[0.3.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.2.0...0.3.0
+[0.2.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/2f540d20eba15f0990770620c24904c613e1f1a8...0.1.0
 
 [keepachangelog]: https://keepachangelog.com/en/1.0.0/
 [semver]: https://semver.org/spec/v2.0.0.html
