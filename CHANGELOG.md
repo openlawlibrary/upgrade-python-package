@@ -15,7 +15,7 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
-- Drop Python 3.6 support, add support for Python 3.11, 3.12 ([#15])
+- Drop Python 3.6, 3.7 support, add support for Python 3.11, 3.12 ([#15])
 
 ### Fixed
 
