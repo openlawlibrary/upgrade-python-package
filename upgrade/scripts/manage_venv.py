@@ -44,7 +44,7 @@ def venv(*args, **kwargs):
     try:
         return run(*((sys.executable, "-m", "venv", "--without-pip") + args), **kwargs)
     except subprocess.CalledProcessError as e:
-        logging.error(f"Error occurred while creating venv {str(e)}" )
+        logging.error(f"Error occurred while creating venv {str(e)}")
         raise e
 
 
@@ -65,26 +65,29 @@ def install_system_dependencies(venv_executable: str) -> None:
 
 
 def install_upgrade_python_package(
-    venv_executable: str, upgrade_python_package_version: Optional[str] = None
+    venv_executable: str,
+    upgrade_python_package_version: Optional[str] = None,
+    local_installation_path: Optional[str] = None,
 ) -> None:
     upgrade_python_package = "upgrade-python-package"
     if upgrade_python_package_version:
         upgrade_python_package += f"=={upgrade_python_package_version}"
     try:
-        # # # NOTE: for local testing of unreleased upgrade-python-package,
-        # # use the following pip install command instead
-        # pip(
-        #     "install",
-        #     "-e",
-        #     "D:\\OLL\\upgrade-python-package",
-        #     py_executable=venv_executable,
-        # )
-        pip(
-            "install",
-            "--upgrade",
-            upgrade_python_package,
-            py_executable=venv_executable,
-        )
+        if local_installation_path:
+            # for local testing of unreleased upgrade-python-package
+            pip(
+                "install",
+                "-e",
+                str(Path(local_installation_path)),
+                py_executable=venv_executable,
+            )
+        else:
+            pip(
+                "install",
+                "--upgrade",
+                upgrade_python_package,
+                py_executable=venv_executable,
+            )
     except subprocess.CalledProcessError as e:
         logging.error(
             f"Error occurred while installing upgrade-python-package {str(e)}"
@@ -170,7 +173,10 @@ def _get_venv_path(envs_home: str, requirements: str) -> Path:
 
 
 def create_venv(
-    envs_home: str, requirements: str, upgrade_python_package_version
+    envs_home: str,
+    requirements: str,
+    upgrade_python_package_version: Optional[str],
+    local_installation_path: Optional[str] = None,
 ) -> str:
     """ """
     env_path = _get_venv_path(envs_home, requirements)
@@ -179,7 +185,9 @@ def create_venv(
     py_executable = get_venv_executable(str(env_path))
     ensure_pip(py_executable)
     install_system_dependencies(py_executable)
-    install_upgrade_python_package(py_executable, upgrade_python_package_version)
+    install_upgrade_python_package(
+        py_executable, upgrade_python_package_version, local_installation_path
+    )
 
     return py_executable
 
@@ -213,6 +221,7 @@ def build_and_upgrade_venv(
     blue_green_deployment: Optional[bool] = False,
     upgrade_python_package_version: Optional[str] = None,
     log_location: Optional[str] = None,
+    local_installation_path: Optional[str] = None,
 ) -> str:
     """Build and upgrade a virtualenv."""
     venv_path = str(_get_venv_path(envs_home, requirements))
@@ -223,7 +232,10 @@ def build_and_upgrade_venv(
         print(msg)
         logging.info(msg)
         py_executable = create_venv(
-            envs_home, requirements, upgrade_python_package_version
+            envs_home,
+            requirements,
+            upgrade_python_package_version,
+            local_installation_path,
         )
     else:
         py_executable = get_venv_executable(venv_path)
@@ -280,6 +292,7 @@ def manage_venv(
     additional_dependencies: Optional[List[str]] = None,
     blue_green_deployment: Optional[bool] = False,
     upgrade_python_package_version: Optional[str] = None,
+    local_installation_path: Optional[str] = None,
 ):
     response_status = {}
     try:
@@ -311,6 +324,7 @@ def manage_venv(
             blue_green_deployment,
             upgrade_python_package_version,
             log_location,
+            local_installation_path,
         )
         response_status["responseStatus"] = VenvUpgradeStatus.UPGRADED.value
     except Exception as e:
@@ -396,6 +410,13 @@ parser.add_argument(
     type=str,
     help="Version of upgrade python package script to install in the virtual environment.",
 )
+parser.add_argument(
+    "--local-installation-path",
+    action="store",
+    type=str,
+    default=None,
+    help="Path to the local unreleased upgrade-python-package directory to install in editable mode.",
+)
 
 
 def main():
@@ -412,6 +433,7 @@ def main():
     additional_dependencies = parsed_args.additional_dependencies
     blue_green_deployment = parsed_args.blue_green_deployment
     upgrade_python_package_version = parsed_args.upgrade_python_package_version
+    local_installation_path = parsed_args.local_installation_path
     manage_venv(
         envs_home=envs_home,
         requirements=requirements,
@@ -425,6 +447,7 @@ def main():
         additional_dependencies=additional_dependencies,
         blue_green_deployment=blue_green_deployment,
         upgrade_python_package_version=upgrade_python_package_version,
+        local_installation_path=local_installation_path,
     )
 
 
