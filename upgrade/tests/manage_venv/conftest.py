@@ -123,7 +123,7 @@ def mock_package_index_html():
         yield
 
 
-def install_upgrade_python_package(venv_executable, upgrade_python_package_version):
+def install_upgrade_python_package(venv_executable, *rest):
     run(
         *([
             venv_executable,
