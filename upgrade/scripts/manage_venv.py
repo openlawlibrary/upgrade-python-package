@@ -194,7 +194,16 @@ def create_venv(
 
 @contextmanager
 def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
-    """Create a temporary virtualenv and return the path to the python executable."""
+    """Create a temporary virtualenv and return the path to the python executable.
+    The temporary virtualenv is created in the same directory as the original virtualenv.
+
+    The purpose of temporary virtualenv is to fully upgrade packages. Once the upgrade is successful,
+    the original virtualenv is replaced with the temporary (now fully upgraded) virtualenv.
+    If the upgrade fails, the original virtualenv is not replaced with the temporary virtualenv.
+
+    If blue_green_deployment is True, the original virtualenv is not replaced with the temporary virtualenv.
+    In such a case, the temporary virtualenv is expected to be manually handled by the caller.
+    """
     try:
         backup_venv_path = Path(str(venv_path) + "_green")
         if backup_venv_path.exists():
