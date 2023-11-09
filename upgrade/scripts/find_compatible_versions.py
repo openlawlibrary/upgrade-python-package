@@ -98,6 +98,23 @@ def find_compatible_versions(
     log_location: Optional[str] = None,
     test: Optional[bool] = None,
 ):
+    """
+    Entry point that retrieves the latest compatible version of a package that is installed in the virtualenv.
+    This function is expected to be run periodically to check for available upgrades.
+
+    Prerequisites:
+    - virtualenv is created
+    - package is installed in the virtualenv
+    - requirements.txt file is present in the repository or requirements are passed as an argument
+
+    There are three possible response states:
+    - AVAILABLE: compatible version is available
+    - AT_LATEST_VERSION: at latest version
+    - ERROR: error occurred
+
+    Raises an exception if expected package is not installed in the venv,
+    or if requirements or requirements_file is not provided.
+    """
     response_status = {}
     try:
         if requirements is None and requirements_file is None:
