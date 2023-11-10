@@ -1,11 +1,12 @@
 from upgrade.scripts.upgrade_python_package import is_package_already_installed
-from upgrade.tests.conftest import install_local_package
+from upgrade.tests.upgrade_package.conftest import install_local_package
 import pytest
+import sys
 
 
 def test_is_package_already_installed_expect_none():
     cut = is_package_already_installed
-    version = cut("oll-test-top-level")
+    version = cut("oll-test-top-level", sys.executable)
     actual = version
     expected = None
     assert actual == expected
@@ -24,7 +25,7 @@ def test_is_package_already_installed_expect_package_version(package_name):
     install_local_package(full_package_name)
 
     cut = is_package_already_installed
-    version = cut(package_name)
+    version = cut(package_name, sys.executable)
     actual = version
     expected = "2.0.1"
     assert actual == expected

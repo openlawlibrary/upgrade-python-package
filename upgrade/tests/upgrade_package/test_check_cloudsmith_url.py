@@ -1,9 +1,9 @@
-from upgrade.scripts.upgrade_python_package import is_cloudsmith_url_valid
+from upgrade.scripts.validations import is_cloudsmith_url_valid
 try:
     from contextlib import nullcontext as does_not_raise
 except ImportError:
     pass
-from .conftest import CLOUDSMITH_URL
+from upgrade.tests.upgrade_package.conftest import CLOUDSMITH_URL
 import pytest
 import sys
 
@@ -16,7 +16,7 @@ def test_check_cloudsmith_url_where_url_is_invalid_expect_error():
     with pytest.raises(Exception) as e:
         cut(invalid_cloudsmith_url)
     assert (
-        f"Failed to reach cloudsmith. Provided invalid URL: {invalid_cloudsmith_url}"
+        f"'Failed to reach package index url. Provided invalid URL: {invalid_cloudsmith_url}"
         in str(e)
     )
 

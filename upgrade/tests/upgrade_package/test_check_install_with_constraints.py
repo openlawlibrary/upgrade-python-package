@@ -1,5 +1,5 @@
 import pytest
-import subprocess
+
 from upgrade.scripts.upgrade_python_package import install_with_constraints
 
 from .conftest import install_local_package
@@ -52,7 +52,7 @@ def test_install_top_level_package_2_0_1_with_constraints_expect_success(
 def test_install_top_level_package_2_0_2_without_constraints_where_dependencies_do_not_exist_expect_error(
     wheels_dir, capsys
 ):
-    package = "oll-test-top-level==2.0.2"
+    package = "oll-test-top-level==2.1.0"
     cut = install_with_constraints
     with pytest.raises(Exception):
         cut(

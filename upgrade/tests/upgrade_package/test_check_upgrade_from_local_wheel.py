@@ -1,5 +1,3 @@
-import subprocess
-import pytest
 from upgrade.scripts.upgrade_python_package import upgrade_from_local_wheel
 
 
@@ -15,7 +13,7 @@ def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_ex
     expected_packages = [
         "oll-test-top-level==2.0.0",
         "oll-test-top-level==2.0.1",
-        "oll-test-top-level==2.0.2",
+        "oll-test-top-level==2.1.0",
         "oll-dependency1==2.0.0",
         "oll-dependency1==2.0.1",
         "oll-dependency2==2.0.0",
@@ -38,6 +36,7 @@ def test_upgrade_local_wheel_top_level_package_2_0_0_where_package_name_is_valid
         package,
         skip_post_install=True,
         wheels_path=str(wheels_dir),
+        version="==2.0.0",
     )
     dependencies_from_venv = use_pip(
         "list",
@@ -66,6 +65,7 @@ def test_upgrade_local_wheel_top_level_package_from_2_0_0_to_2_0_1_expect_newer_
         package,
         skip_post_install=True,
         wheels_path=str(wheels_dir),
+        version="==2.0.0",
     )
 
     newer_package = "oll-test-top-level==2.0.1"
@@ -73,6 +73,7 @@ def test_upgrade_local_wheel_top_level_package_from_2_0_0_to_2_0_1_expect_newer_
         newer_package,
         skip_post_install=True,
         wheels_path=str(wheels_dir),
+        version="==2.0.1",
     )
 
     dependencies_from_venv = use_pip(
@@ -99,12 +100,13 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
     package = "oll-test-top-level==1.0.0"
 
     cut = upgrade_from_local_wheel
-    with pytest.raises(IndexError):
-        cut(
-            package,
-            skip_post_install=True,
-            wheels_path=str(wheels_dir),
-        )
+    cut(
+        package,
+        skip_post_install=True,
+        wheels_path=str(wheels_dir),
+        version="==1.0.0",
+    )
+
     out, _ = capsys.readouterr()
 
     expected = "Wheel oll-test-top-level==1.0.0 not found"
@@ -113,14 +115,20 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
 
 
 def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_have_all_dependencies_locally_expect_package_install_fail(
-    wheels_dir, mocked_constraints_path
+    wheels_dir, mocked_constraints_path, capsys
 ):
-    package = "oll-test-top-level==2.0.2"
+    package = "oll-test-top-level==2.1.0"
 
     cut = upgrade_from_local_wheel
-    with pytest.raises(Exception):
-        cut(
-            package,
-            skip_post_install=True,
-            wheels_path=str(wheels_dir),
-        )
+    cut(
+        package,
+        skip_post_install=True,
+        wheels_path=str(wheels_dir),
+        version="==2.1.0",
+    )
+
+    out, _ = capsys.readouterr()
+
+    expected = "Failed to install wheel"
+    actual = out
+    assert expected in actual

@@ -1,3 +1,2 @@
-defusedxml==0.7.1
-colorama==0.4.4
-Pillow==9.1.1
+oll-dependency1==2.0.1
+oll-dependency2==2.0.1

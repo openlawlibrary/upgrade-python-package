@@ -3,15 +3,24 @@ import glob
 import json
 import logging
 import os
-import re
 import site
-import subprocess
-import sys
 from importlib import util
 from pathlib import Path
 
+from pip._vendor.packaging.specifiers import SpecifierSet
+from pip._vendor.packaging.utils import parse_wheel_filename
+
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
+from upgrade.scripts.requirements import filter_versions
 from upgrade.scripts.slack import send_slack_notification
+from upgrade.scripts.utils import (
+    is_development_cloudsmith,
+    is_package_already_installed,
+    pip,
+    run,
+    run_python_module,
+)
+from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
@@ -30,7 +39,7 @@ def upgrade_and_run(
     """
     If the package needs to be upgraded upgrade it and then
     run the package (`python -m <package_name>`).
-    We strip brackets before running the packag in case you
+    We strip brackets before running the package in case you
     are installing something like `pip package[env]`.
     Any post-install/post-upgrade functionality should go in
     that top-level module. Any args passed to this function
@@ -45,12 +54,20 @@ def upgrade_and_run(
             "Trying to install version %s of package %s", version, package_name
         )
         was_updated, response_err = attempt_to_install_version(
-            package_install_cmd, version, cloudsmith_url, update_all, slack_webhook_url
+            package_install_cmd,
+            version,
+            cloudsmith_url,
+            update_all,
+            slack_webhook_url,
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
         was_updated, response_err = attempt_upgrade(
-            package_install_cmd, cloudsmith_url, update_all, slack_webhook_url, *args
+            package_install_cmd,
+            cloudsmith_url,
+            update_all,
+            slack_webhook_url,
+            *args,
         )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
@@ -74,13 +91,14 @@ def get_constraints_file_path(package_name, site_packages_dir=None):
         if constraints_file_path.exists():
             return str(constraints_file_path)
         raise ImportError
-    except (ImportError, AttributeError):
-        site_packages_dir = (
-            Path(site_packages_dir)
-            if site_packages_dir
-            else Path(site.getsitepackages()[1])
-        )
-
+    except (TypeError, ImportError, AttributeError):
+        if site_packages_dir:
+            site_packages_dir = Path(site_packages_dir)
+        else:
+            try:
+                site_packages_dir = Path(site.getsitepackages()[1])
+            except IndexError:
+                site_packages_dir = Path(site.getsitepackages()[0])
         package_name = package_name.replace("-", "_")
         constraints_file_path = site_packages_dir / package_name / "constraints.txt"
         if os.path.exists(constraints_file_path):
@@ -188,9 +206,18 @@ def install_wheel(
     package_name, extra = split_package_name_and_extra(package_name)
     if local:
         try:
-            wheel = glob.glob(
-                f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
-            )[0]
+            wheel_paths = sorted(
+                glob.glob(
+                    f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
+                )
+            )
+            wheel_names = [Path(path).name for path in wheel_paths]
+            parsed_wheel_versions = [
+                str(parse_wheel_filename(wheel_name)[1]) for wheel_name in wheel_names
+            ]
+            wheel_mapping = {k: v for (k, v) in zip(parsed_wheel_versions, wheel_paths)}
+            versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
+            wheel = wheel_mapping.get(versions[-1])
         except IndexError:
             print(f"Wheel {package_name} not found")
             raise
@@ -221,13 +248,13 @@ def install_wheel(
     if args:
         install_args.extend(args)
     try:
-        pip(*install_args)
-        pip("check")
+        resp += pip(*install_args)
+        resp += pip("check")
     except:
         # try to install with constraints
         constraints_file_path = get_constraints_file_path(package_name)
         try:
-            resp = install_with_constraints(
+            resp += install_with_constraints(
                 to_install,
                 constraints_file_path,
                 cloudsmith_url,
@@ -256,7 +283,7 @@ def install_wheel(
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
-                package_name = package_name.split("==")[0]
+                package_name = package_name.split("==")[0]  # TODO: why ==?
                 reinstall_args = [
                     "install",
                     "--no-deps",
@@ -273,53 +300,6 @@ def install_wheel(
     return resp
 
 
-def is_cloudsmith_url_valid(cloudsmith_url):
-    try:
-        import requests
-    except ImportError:
-        logging.error("Module 'requests' not found. Could not validate cloudsmith url.")
-        return None
-    response = requests.get(cloudsmith_url)
-    if response.status_code != 200:
-        raise Exception(
-            f"Failed to reach cloudsmith. Provided invalid URL: {cloudsmith_url}"
-        )
-
-
-def is_development_cloudsmith(cloudsmith_url):
-    if cloudsmith_url is not None:
-        return development_url_re.search(cloudsmith_url) is not None
-    try:
-        pip_config = pip("config", "list")
-    except subprocess.CalledProcessError as e:
-        logging.warning("config command not found.")
-        pip_config = ""
-
-    return development_index_re.search(pip_config) is not None
-
-
-def is_package_already_installed(package):
-    results = pip("list", "--format", "json")
-    try:
-        decoder = json.JSONDecoder()
-        parsed_results, _ = decoder.raw_decode(results)
-    except json.JSONDecodeError:
-        msg = f"Error occurred while decoding pip list to json"
-        logging.error(msg)
-        raise PipFormatDecodeFailed(msg)
-    package = package.split("==")[0] if "==" in package else package
-    found_package = [
-        (element["name"], element["version"])
-        for element in parsed_results
-        if element["name"] == package
-    ]
-    if found_package:
-        _, version = found_package.pop()
-        return version
-    logging.info(f"Package not found: ${package}")
-    return None
-
-
 def upgrade_from_local_wheel(
     package_install_cmd,
     skip_post_install,
@@ -327,25 +307,26 @@ def upgrade_from_local_wheel(
     cloudsmith_url=None,
     wheels_path=None,
     update_all=False,
+    version=None,
 ):
+    resp = ""
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     try:
-        install_wheel(
+        resp = install_wheel(
             package_install_cmd,
             cloudsmith_url,
             local=True,
             wheels_path=wheels_path,
             update_all=update_all,
+            version_cmd=version,
         )
-    except Exception:
-        raise
+    except Exception as e:
+        response_err = str(e)
+        return False, response_err
     if not skip_post_install:
         module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
-
-
-development_url_re = re.compile(r"([^']+development[^']+)")
-development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
+    return "Successfully installed" in resp, resp
 
 
 def attempt_to_install_version(
@@ -359,13 +340,20 @@ def attempt_to_install_version(
     attempt to install a specific version of the given package
     """
     resp = ""
+    pip_args = []
+    if update_all:
+        pip_args.append("--upgrade")
+    args = tuple(arg for arg in pip_args)
     try:
         resp = install_wheel(
             package_install_cmd,
             cloudsmith_url,
-            version_cmd=version,
-            update_all=update_all,
-            slack_webhook_url=slack_webhook_url,
+            False,
+            None,
+            version,
+            update_all,
+            slack_webhook_url,
+            *args,
         )
     except Exception as e:
         logging.info(f"Could not find {package_install_cmd} {version}")
@@ -423,13 +411,6 @@ def reload_uwsgi_app(package_name):
     run("touch", "--no-dereference", ini_file_path)
 
 
-def pip(*args, **kwargs):
-    """
-    Run pip using the python executable used to run this function
-    """
-    return run_python_module("pip", *args, **kwargs)
-
-
 def run_initial_post_install(package_name, *args):
     file_name = f'{package_name.replace("-", "_")}_run_post_install'
     file_path = os.path.join("/opt/var", file_name)
@@ -442,66 +423,10 @@ def run_initial_post_install(package_name, *args):
         os.remove(file_path)
 
 
-def run_python_module(module_name, *args, **kwargs):
-    """
-    Run a python module using the python executable used to run this function
-    """
-    if not args and not kwargs:
-        # check for arguments stored in an environemtn variable UPDATE_MODULE_NAME
-        var_name = f"UPDATE_{module_name.upper()}"
-        args = tuple(os.environ.get(var_name, "").split())
-    logging.info("running %s python module", module_name)
-    try:
-        return run(*((sys.executable, "-m", module_name) + args), **kwargs)
-    except subprocess.CalledProcessError as e:
-        logging.error("Error occurred while running module %s: %s", module_name, str(e))
-        raise e
-
-
 def run_module_and_reload_uwsgi_app(module_name, *args):
     run_python_module(module_name, *args)
     package_name = module_name.replace("_", "-")
     reload_uwsgi_app(package_name)
-
-
-def run(*command, **kwargs):
-    """Run a command and return its output"""
-    if len(command) == 1 and isinstance(command[0], str):
-        command = command[0].split()
-    print(*command)
-    command = [word.format(**os.environ) for word in command]
-    try:
-        options = dict(
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=True,
-            universal_newlines=True,
-        )
-        options.update(kwargs)
-        completed = subprocess.run(command, **options)
-    except subprocess.CalledProcessError as err:
-        logging.warning('Error occurred while running command "%s"', *command)
-        if err.stdout:
-            print(err.stdout)
-            logging.warning(err.stdout)
-        if err.stderr:
-            print(err.stderr)
-            logging.warning(err.stderr)
-        print(
-            'Command "{}" returned non-zero exit status {}'.format(
-                " ".join(command), err.returncode
-            )
-        )
-        logging.warning(
-            'Command "%s" returned non-zero exit status %s',
-            " ".join(command),
-            err.returncode,
-        )
-        raise err
-    if completed.stdout:
-        print(completed.stdout)
-        logging.info("Completed. Output: %s", completed.stdout)
-    return completed.stdout.rstrip() if completed.returncode == 0 else None
 
 
 def split_package_name_and_extra(package_install_cmd):
@@ -532,8 +457,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--test",
     action="store_true",
-    help="Determines whether log messages will be output to stdout "
-    + "or written to a log file",
+    help="Determines whether log messages will be output to stdout, written to a log file and is used to determine logging level.",
 )
 parser.add_argument(
     "--skip-post-install",
@@ -629,7 +553,7 @@ def upgrade_python_package(
     *vars,
 ):
     success = False
-    response_err = ""
+    response_output = ""
     try:
         if test:
             logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
@@ -645,18 +569,19 @@ def upgrade_python_package(
         wheels_path = wheels_path or "/vagrant/wheels"
         slack_webhook_url = slack_webhook_url or os.environ.get("SLACK_WEBHOOK_URL")
         if update_from_local_wheels:
-            upgrade_from_local_wheel(
+            success, response_output = upgrade_from_local_wheel(
                 package,
                 skip_post_install,
                 wheels_path=wheels_path,
                 cloudsmith_url=cloudsmith_url,
                 update_all=update_all,
+                version=version,
                 *vars,
             )
         elif should_run_initial_post_install:
             run_initial_post_install(package, *vars)
         else:
-            success, response_err = upgrade_and_run(
+            success, response_output = upgrade_and_run(
                 package,
                 force,
                 skip_post_install,
@@ -669,12 +594,12 @@ def upgrade_python_package(
     except Exception as e:
         if not format_output:
             raise e
-        response_err += str(e)
+        response_output += str(e)
     if format_output:
         while len(logging.root.handlers) > 0:
             logging.root.removeHandler(logging.root.handlers[-1])
         logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        response = json.dumps({"success": success, "responseError": response_err})
+        response = json.dumps({"success": success, "responseOutput": response_output})
         logging.info(response)
         print(response)
 
