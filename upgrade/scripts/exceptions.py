@@ -8,3 +8,6 @@ class PipFormatDecodeFailed(Exception):
 
 class SlackError(Exception):
     pass
+
+class UpgradeError(Exception):
+    pass

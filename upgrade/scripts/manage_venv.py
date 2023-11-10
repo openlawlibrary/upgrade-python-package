@@ -20,6 +20,7 @@ from upgrade.scripts.utils import (
     on_rm_error,
 )
 from upgrade.scripts.validations import is_cloudsmith_url_valid
+from upgrade.scripts.exceptions import UpgradeError
 
 
 class VenvUpgradeStatus(Enum):
@@ -148,6 +149,21 @@ def upgrade_venv(
         raise e
 
 
+def _check_venv_consistent(
+    requirements_obj: Any, venv_executable: str, venv_response: Optional[str] = None
+) -> None:
+    try:
+        pip("check", py_executable=venv_executable)
+    except:
+        msg = f"Error occurred while checking venv at path: {venv_executable}"
+        if venv_response is not None:
+            msg += response_output_re.search(venv_response).group(1)
+        logging.error(msg)
+        raise UpgradeError(msg)
+
+    logging.debug(f"{str(requirements_obj)} venv is consistent.")
+
+
 def _switch_venvs(venv_path: str) -> None:
     """
     Switch the virtualenv environments after a successful upgrade,
@@ -178,7 +194,7 @@ def create_venv(
     upgrade_python_package_version: Optional[str],
     local_installation_path: Optional[str] = None,
 ) -> str:
-    """ """
+    """Create a virtualenv and install upgrade-python-package in it."""
     env_path = _get_venv_path(envs_home, requirements)
     create_directory(env_path)
     venv(*[str(env_path)])
@@ -213,7 +229,7 @@ def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
         yield get_venv_executable(backup_venv_path)
     except Exception as e:
         logging.error(f"Error occurred while creating temporary venv: {str(e)}")
-        raise e
+        raise UpgradeError(e)
     finally:
         if backup_venv_path.exists() and not blue_green_deployment:
             shutil.rmtree(backup_venv_path, onerror=on_rm_error)
@@ -235,6 +251,7 @@ def build_and_upgrade_venv(
     """Build and upgrade a virtualenv."""
     venv_path = str(_get_venv_path(envs_home, requirements))
     error_message = None
+    requirements_obj = to_requirements_obj(requirements)
     if not Path(venv_path).exists():
         auto_upgrade = True
         msg = "Requirements changed. Creating new virtualenv."
@@ -253,9 +270,9 @@ def build_and_upgrade_venv(
             print(msg)
             logging.info(msg)
             return py_executable
-    if auto_upgrade:
-        requirements_obj = to_requirements_obj(requirements)
+        _check_venv_consistent(requirements_obj, py_executable)
 
+    if auto_upgrade:
         with temporary_upgrade_venv(
             venv_path, blue_green_deployment
         ) as temp_venv_executable:
@@ -274,14 +291,9 @@ def build_and_upgrade_venv(
                 logging.error(
                     f"Unexpected error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
                 )
-                raise e
+                raise UpgradeError(e)
 
-            upgrade_successful = "true" in upgrade_success_re.search(response).group()
-            if not upgrade_successful:
-                response_error_msg = response_output_re.search(response).group(1)
-                msg = f"Error occurred while upgrading {requirements_obj.name}"
-                logging.error(f"{msg} - {response_error_msg}")
-
+            _check_venv_consistent(requirements_obj, temp_venv_executable, response)
             if not blue_green_deployment:
                 _switch_venvs(venv_path)
 
