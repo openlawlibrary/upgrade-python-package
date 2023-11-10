@@ -10,6 +10,16 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.7.0]
+
+### Added
+
 - Added venv management script built on top of upgrade-python-package script ([#15])
 - Added `find-compatible-versions` script which for a given venv, determines whether a new compatible update is available ([#15])
 
@@ -117,7 +127,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.6.0...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.3.0...0.4.0
