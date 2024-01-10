@@ -216,10 +216,16 @@ def install_wheel(
                 str(parse_wheel_filename(wheel_name)[1]) for wheel_name in wheel_names
             ]
             wheel_mapping = {k: v for (k, v) in zip(parsed_wheel_versions, wheel_paths)}
-            versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
-            wheel = wheel_mapping.get(versions[-1])
+            if version_cmd is not None:
+                versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
+                wheel = wheel_mapping.get(versions[-1])
+            else:
+                wheel = parsed_wheel_versions[-1]
         except IndexError:
             print(f"Wheel {package_name} not found")
+            raise
+        except Exception as e:
+            print(f"Failed to install wheel {package_name} due to error: {e}")
             raise
         to_install = wheel + extra
     else:
