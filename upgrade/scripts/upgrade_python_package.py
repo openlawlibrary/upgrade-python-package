@@ -71,7 +71,12 @@ def upgrade_and_run(
         )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
-        try_running_module(module_name, *args)
+        try_running_module(
+            module_name,
+            cloudsmith_url=cloudsmith_url,
+            slack_webhook_url=slack_webhook_url,
+            *args,
+        )
     return was_updated, response_err
 
 
@@ -453,14 +458,23 @@ def split_package_name_and_extra(package_install_cmd):
     return package_name, extra
 
 
-def try_running_module(wheel, *args):
+def try_running_module(wheel, cloudsmith_url=None, slack_webhook_url=None, *args):
     file_name = os.path.basename(wheel)
     module_name = file_name.split("-", 1)[0]
     # don't try running the module if it does not exists
     # prevents errors from being printed in case of trying
     # to run e.g. oll-core or oll-partners
     if util.find_spec(module_name) and util.find_spec(".__main__", package=module_name):
-        run_module_and_reload_uwsgi_app(module_name, *args)
+        try:
+            run_module_and_reload_uwsgi_app(module_name, *args)
+        except Exception:
+            if slack_webhook_url is not None:
+                send_upgrade_notification(
+                    f"Failed to run module {module_name}",
+                    cloudsmith_url,
+                    slack_webhook_url,
+                )
+            raise
     else:
         logging.info("No module named %s", module_name)
         print(f"No module named {module_name}")
