@@ -272,22 +272,11 @@ def install_wheel(
             )
         except:
             if slack_webhook_url is not None:
-                try:
-                    environment = (
-                        "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
-                    )
-                    log_filepath = get_log_file_path().as_posix() or "log file"
-                    server_metadata = get_server_metadata()
-                    send_slack_notification(
-                        f"Failed to upgrade package {package_name}",
-                        f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata}).",
-                        slack_webhook_url,
-                    )
-                except Exception as e:
-                    logging.error(
-                        f"Failed to send slack notification due to error: {e}"
-                    )
-                    raise
+                send_upgrade_notification(
+                    f"Failed to upgrade package {package_name}",
+                    cloudsmith_url,
+                    slack_webhook_url,
+                )
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
@@ -435,6 +424,22 @@ def run_module_and_reload_uwsgi_app(module_name, *args):
     run_python_module(module_name, *args)
     package_name = module_name.replace("_", "-")
     reload_uwsgi_app(package_name)
+
+
+def send_upgrade_notification(header, cloudsmith_url, slack_webhook_url):
+    try:
+        log_filepath = get_log_file_path().as_posix() or "log file"
+        server_metadata = get_server_metadata()
+        environment = "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
+        text = f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata})."
+        send_slack_notification(
+            header,
+            text,
+            slack_webhook_url,
+        )
+    except Exception as e:
+        logging.error(f"Failed to send upgrade notification due to error: {e}")
+        raise
 
 
 def split_package_name_and_extra(package_install_cmd):
