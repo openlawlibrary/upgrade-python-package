@@ -217,7 +217,9 @@ def install_wheel(
             ]
             wheel_mapping = {k: v for (k, v) in zip(parsed_wheel_versions, wheel_paths)}
             if version_cmd is not None:
-                versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
+                versions = filter_versions(
+                    SpecifierSet(version_cmd), parsed_wheel_versions
+                )
                 wheel = wheel_mapping.get(versions[-1])
             else:
                 wheel = parsed_wheel_versions[-1]
