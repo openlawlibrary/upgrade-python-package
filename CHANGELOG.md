@@ -16,6 +16,34 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Removed
 
+## [0.7.2]
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Send slack notification when post-install fails ([#18])
+
+[#18]: https://github.com/openlawlibrary/upgrade-python-package/pull/18
+
+### Removed
+
+## [0.7.1]
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix get latest wheel if `version_cmd` is missing ([#17])
+
+### Removed
+
+[#17]: https://github.com/openlawlibrary/upgrade-python-package/pull/17
+
 ## [0.7.0]
 
 ### Added
@@ -127,7 +155,9 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.0...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.2...HEAD
+[0.7.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.1...0.7.2
+[0.7.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.4.0...0.5.0

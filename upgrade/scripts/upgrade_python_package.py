@@ -71,7 +71,12 @@ def upgrade_and_run(
         )
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
-        try_running_module(module_name, *args)
+        try_running_module(
+            module_name,
+            cloudsmith_url=cloudsmith_url,
+            slack_webhook_url=slack_webhook_url,
+            *args,
+        )
     return was_updated, response_err
 
 
@@ -217,7 +222,9 @@ def install_wheel(
             ]
             wheel_mapping = {k: v for (k, v) in zip(parsed_wheel_versions, wheel_paths)}
             if version_cmd is not None:
-                versions = filter_versions(SpecifierSet(version_cmd), parsed_wheel_versions)
+                versions = filter_versions(
+                    SpecifierSet(version_cmd), parsed_wheel_versions
+                )
                 wheel = wheel_mapping.get(versions[-1])
             else:
                 wheel = parsed_wheel_versions[-1]
@@ -270,22 +277,11 @@ def install_wheel(
             )
         except:
             if slack_webhook_url is not None:
-                try:
-                    environment = (
-                        "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
-                    )
-                    log_filepath = get_log_file_path().as_posix() or "log file"
-                    server_metadata = get_server_metadata()
-                    send_slack_notification(
-                        f"Failed to upgrade package {package_name}",
-                        f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata}).",
-                        slack_webhook_url,
-                    )
-                except Exception as e:
-                    logging.error(
-                        f"Failed to send slack notification due to error: {e}"
-                    )
-                    raise
+                send_upgrade_notification(
+                    f"Failed to upgrade package {package_name}",
+                    cloudsmith_url,
+                    slack_webhook_url,
+                )
             # if install with constraints fails or the installation caused broken dependencies
             # revert back to old package version
             if version is not None:
@@ -435,6 +431,22 @@ def run_module_and_reload_uwsgi_app(module_name, *args):
     reload_uwsgi_app(package_name)
 
 
+def send_upgrade_notification(header, cloudsmith_url, slack_webhook_url):
+    try:
+        log_filepath = get_log_file_path().as_posix() or "log file"
+        server_metadata = get_server_metadata()
+        environment = "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
+        text = f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata})."
+        send_slack_notification(
+            header,
+            text,
+            slack_webhook_url,
+        )
+    except Exception as e:
+        logging.error(f"Failed to send upgrade notification due to error: {e}")
+        raise
+
+
 def split_package_name_and_extra(package_install_cmd):
     extra_start = package_install_cmd.find("[")
     if extra_start != -1:
@@ -446,14 +458,23 @@ def split_package_name_and_extra(package_install_cmd):
     return package_name, extra
 
 
-def try_running_module(wheel, *args):
+def try_running_module(wheel, cloudsmith_url=None, slack_webhook_url=None, *args):
     file_name = os.path.basename(wheel)
     module_name = file_name.split("-", 1)[0]
     # don't try running the module if it does not exists
     # prevents errors from being printed in case of trying
     # to run e.g. oll-core or oll-partners
     if util.find_spec(module_name) and util.find_spec(".__main__", package=module_name):
-        run_module_and_reload_uwsgi_app(module_name, *args)
+        try:
+            run_module_and_reload_uwsgi_app(module_name, *args)
+        except Exception:
+            if slack_webhook_url is not None:
+                send_upgrade_notification(
+                    f"Failed to run module {module_name}",
+                    cloudsmith_url,
+                    slack_webhook_url,
+                )
+            raise
     else:
         logging.info("No module named %s", module_name)
         print(f"No module named {module_name}")
