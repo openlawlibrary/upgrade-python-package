@@ -16,6 +16,20 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Removed
 
+## [0.7.3]
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix `try_running_module` by adding `kwargs` instead of hardcoded parameters. ([#19])
+
+### Removed
+
+[#19]: https://github.com/openlawlibrary/upgrade-python-package/pull/19
+
 ## [0.7.2]
 
 ### Added
@@ -155,7 +169,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.2...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.3...HEAD
+[0.7.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.6.0...0.7.0
