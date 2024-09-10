@@ -73,9 +73,9 @@ def upgrade_and_run(
         module_name = package_name.replace("-", "_")
         try_running_module(
             module_name,
+            *args,
             cloudsmith_url=cloudsmith_url,
             slack_webhook_url=slack_webhook_url,
-            *args,
         )
     return was_updated, response_err
 
@@ -458,7 +458,7 @@ def split_package_name_and_extra(package_install_cmd):
     return package_name, extra
 
 
-def try_running_module(wheel, cloudsmith_url=None, slack_webhook_url=None, *args):
+def try_running_module(wheel, *args, **kwargs):
     file_name = os.path.basename(wheel)
     module_name = file_name.split("-", 1)[0]
     # don't try running the module if it does not exists
@@ -468,7 +468,9 @@ def try_running_module(wheel, cloudsmith_url=None, slack_webhook_url=None, *args
         try:
             run_module_and_reload_uwsgi_app(module_name, *args)
         except Exception:
+            slack_webhook_url = kwargs.get("slack_webhook_url")
             if slack_webhook_url is not None:
+                cloudsmith_url = kwargs.get("cloudsmith_url")
                 send_upgrade_notification(
                     f"Failed to run module {module_name}",
                     cloudsmith_url,
