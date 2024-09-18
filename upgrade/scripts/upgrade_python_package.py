@@ -34,6 +34,7 @@ def upgrade_and_run(
     cloudsmith_url=None,
     update_all=False,
     slack_webhook_url=None,
+    constraints_path = None,
     *args,
 ):
     """
@@ -59,6 +60,7 @@ def upgrade_and_run(
             cloudsmith_url,
             update_all,
             slack_webhook_url,
+            constraints_path,
         )
     else:
         logging.info('Trying to upgrade "%s" package.', package_name)
@@ -67,6 +69,7 @@ def upgrade_and_run(
             cloudsmith_url,
             update_all,
             slack_webhook_url,
+            constraints_path,
             *args,
         )
     if not skip_post_install and (was_updated or force):
@@ -201,6 +204,7 @@ def install_wheel(
     version_cmd=None,
     update_all=False,
     slack_webhook_url=None,
+    constraints_path=None,
     *args,
 ):
     """
@@ -265,7 +269,7 @@ def install_wheel(
         resp += pip("check")
     except:
         # try to install with constraints
-        constraints_file_path = get_constraints_file_path(package_name)
+        constraints_file_path = constraints_path or get_constraints_file_path(package_name)
         try:
             resp += install_with_constraints(
                 to_install,
@@ -310,6 +314,7 @@ def upgrade_from_local_wheel(
     wheels_path=None,
     update_all=False,
     version=None,
+    constraints_path=None,
 ):
     resp = ""
     package_name, _ = split_package_name_and_extra(package_install_cmd)
@@ -321,6 +326,7 @@ def upgrade_from_local_wheel(
             wheels_path=wheels_path,
             update_all=update_all,
             version_cmd=version,
+            constraints_path=constraints_path,
         )
     except Exception as e:
         response_err = str(e)
@@ -337,6 +343,7 @@ def attempt_to_install_version(
     cloudsmith_url=None,
     update_all=False,
     slack_webhook_url=None,
+    constraints_path=None,
 ):
     """
     attempt to install a specific version of the given package
@@ -355,6 +362,7 @@ def attempt_to_install_version(
             version,
             update_all,
             slack_webhook_url,
+            constraints_path,
             *args,
         )
     except Exception as e:
@@ -369,6 +377,7 @@ def attempt_upgrade(
     cloudsmith_url=None,
     update_all=False,
     slack_webhook_url=None,
+    constraints_path=None,
     *args,
 ):
     """
@@ -390,6 +399,7 @@ def attempt_upgrade(
         None,
         update_all,
         slack_webhook_url,
+        constraints_path,
         *args,
     )
     was_upgraded = "Requirement already up-to-date" not in resp
@@ -561,6 +571,11 @@ parser.add_argument(
     default=None,
     help="Slack webhook url string for sending slack notifications on failed upgrade",
 )
+parser.add_argument(
+    "--constraints-path",
+    action="store",
+    help="Path to constraints.txt file"
+)
 
 
 def upgrade_python_package(
@@ -577,6 +592,7 @@ def upgrade_python_package(
     format_output=False,
     update_all=False,
     slack_webhook_url=None,
+    constraints_path=None,
     *vars,
 ):
     success = False
@@ -603,6 +619,7 @@ def upgrade_python_package(
                 cloudsmith_url=cloudsmith_url,
                 update_all=update_all,
                 version=version,
+                constraints_path=constraints_path,
                 *vars,
             )
         elif should_run_initial_post_install:
@@ -616,6 +633,7 @@ def upgrade_python_package(
                 cloudsmith_url,
                 update_all,
                 slack_webhook_url,
+                constraints_path,
                 *vars,
             )
     except Exception as e:
@@ -646,6 +664,7 @@ def main():
     format_output = parsed_args.format_output
     update_all = parsed_args.update_all
     slack_webhook_url = parsed_args.slack_webhook_url
+    constraints_path = parsed_args.constraints_path
     upgrade_python_package(
         package,
         wheels_path,
@@ -660,9 +679,11 @@ def main():
         format_output,
         update_all,
         slack_webhook_url,
+        constraints_path,
         *parsed_args.vars,
     )
 
 
 if __name__ == "__main__":
+
     main()
