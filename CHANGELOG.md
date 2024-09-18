@@ -12,6 +12,10 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+- Add support for --constraints-path flag ([#20])
+
+[#20]: https://github.com/openlawlibrary/upgrade-python-package/pull/20
+
 ### Fixed
 
 ### Removed

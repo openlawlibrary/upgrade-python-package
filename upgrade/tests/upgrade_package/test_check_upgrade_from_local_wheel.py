@@ -117,7 +117,7 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
 
 
 def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_have_all_dependencies_locally_expect_package_install_fail(
-    wheels_dir, mocked_constraints_path, capsys
+    wheels_dir, capsys
 ):
     package = "oll-test-top-level==2.1.0"
 
@@ -137,7 +137,7 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
 
 
 def test_upgrade_local_wheel_test_constraints_flag(
-    wheels_dir, use_pip, mocked_constraints_path
+    use_pip
 ):
     package = "oll-test-top-level==2.0.2"
     cut = upgrade_from_local_wheel
@@ -166,7 +166,7 @@ def test_upgrade_local_wheel_test_constraints_flag(
     assert actual == expected
     
 def test_upgrade_local_wheel_test_no_constraints_flag(
-    wheels_dir, use_pip, mocked_constraints_path
+    use_pip
 ):
     package = "oll-test-top-level==2.0.2"
     cut = upgrade_from_local_wheel
