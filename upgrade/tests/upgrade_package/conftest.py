@@ -4,7 +4,7 @@ import pytest
 from mock import patch
 
 from upgrade.scripts.upgrade_python_package import pip
-from ..conftest import VENV_PATH, REPOSITORY_WHEELS_PATH
+from ..conftest import VENV_PATH, WHEELS_DIR
 
 CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)
 
@@ -43,8 +43,8 @@ def mock_find_spec():
 
 
 def install_local_package(dependency, no_deps=None):
-    full_dep_path = str(REPOSITORY_WHEELS_PATH / dependency)
-    links_path = str(REPOSITORY_WHEELS_PATH)
+    full_dep_path = str(WHEELS_DIR / dependency)
+    links_path = str(WHEELS_DIR)
     if no_deps is None:
         pip("install", full_dep_path, "--find-links", links_path)
     else:

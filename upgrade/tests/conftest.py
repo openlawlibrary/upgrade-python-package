@@ -11,12 +11,13 @@ from upgrade.scripts.utils import is_windows
 original_executable = sys.executable
 
 VENV_PATH = Path(__file__).parent / "venv"
-REPOSITORY_WHEELS_PATH = Path(__file__).parent / "repository"
+DATA_PATH = Path(__file__).parent / "data"
+WHEELS_DIR = DATA_PATH / "wheels_dir"
 
 
 @pytest.fixture
 def wheels_dir():
-    return REPOSITORY_WHEELS_PATH
+    return WHEELS_DIR
 
 
 def pytest_configure(config):

@@ -1,4 +1,6 @@
 from upgrade.scripts.upgrade_python_package import upgrade_from_local_wheel
+from ..conftest import DATA_PATH
+from pathlib import Path
 
 
 def test_existing_dependencies_in_vm_when_expected_packages_are_not_installed_expect_false(
@@ -115,7 +117,7 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
 
 
 def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_have_all_dependencies_locally_expect_package_install_fail(
-    wheels_dir, mocked_constraints_path, capsys
+    wheels_dir, capsys
 ):
     package = "oll-test-top-level==2.1.0"
 
@@ -132,3 +134,61 @@ def test_upgrade_top_level_package_from_local_wheel_where_package_name_does_not_
     expected = "Failed to install wheel"
     actual = out
     assert expected in actual
+
+
+def test_upgrade_local_wheel_test_constraints_flag(
+    use_pip
+):
+    package = "oll-test-top-level==2.0.2"
+    cut = upgrade_from_local_wheel
+    cut(
+        package,
+        skip_post_install=True,
+        wheels_path=str(Path(DATA_PATH) / "test_constraints_flag"),
+        constraints_path=str(Path(DATA_PATH) / "test_constraints_flag/constraints.txt"),
+        version="~=2.0.2",
+    )
+    dependencies_from_venv = use_pip(
+        "list",
+        "--format=freeze",
+        "--exclude-editable",
+    ).splitlines()
+
+    expected_packages = {
+        "oll-test-top-level==2.0.2",
+        "oll-dependency1==2.0.0",
+        "oll-dependency2==2.0.0",
+    }
+    actual_packages = set(dependencies_from_venv)
+
+    expected = True
+    actual = expected_packages.issubset(actual_packages)
+    assert actual == expected
+    
+def test_upgrade_local_wheel_test_no_constraints_flag(
+    use_pip
+):
+    package = "oll-test-top-level==2.0.2"
+    cut = upgrade_from_local_wheel
+    cut(
+        package,
+        skip_post_install=True,
+        wheels_path=str(Path(DATA_PATH) / "test_constraints_flag"),
+        version="~=2.0.2",
+    )
+    dependencies_from_venv = use_pip(
+        "list",
+        "--format=freeze",
+        "--exclude-editable",
+    ).splitlines()
+
+    expected_packages = {
+        "oll-test-top-level==2.0.2",
+        "oll-dependency1==2.0.2",
+        "oll-dependency2==2.0.2",
+    }
+    actual_packages = set(dependencies_from_venv)
+
+    expected = True
+    actual = expected_packages.issubset(actual_packages)
+    assert actual == expected

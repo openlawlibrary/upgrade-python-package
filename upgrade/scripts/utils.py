@@ -87,7 +87,7 @@ def run(*command, **kwargs):
         options.update(kwargs)
         completed = subprocess.run(command, **options)
     except subprocess.CalledProcessError as err:
-        logging.warning('Error occurred while running command "%s"', *command)
+        logging.warning('Error occurred while running command "%s"', " ".join(command))
         if err.stdout:
             print(err.stdout)
             logging.warning(err.stdout)

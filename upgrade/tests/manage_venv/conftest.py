@@ -9,7 +9,7 @@ from upgrade.scripts.upgrade_python_package import run
 
 from upgrade.scripts.utils import get_venv_executable, is_windows
 
-from ..conftest import REPOSITORY_WHEELS_PATH, original_executable
+from ..conftest import WHEELS_DIR, original_executable
 
 THIS_FOLDER = Path(__file__).parent
 ENVIRONMENTS_DIR = THIS_FOLDER.parent / "Environments"
@@ -35,7 +35,7 @@ def _create_venv(path, version, venv_name=None):
         "install",
         dependency_to_install,
         "--find-links",
-        str(REPOSITORY_WHEELS_PATH),
+        str(WHEELS_DIR),
     )
     install_upgrade_python_package(venv_executable, None)
 
