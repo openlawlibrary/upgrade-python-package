@@ -12,6 +12,16 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.8.0]
+
+### Added
+
+### Changed
+
 - Add support for --constraints-path flag ([#20])
 
 [#20]: https://github.com/openlawlibrary/upgrade-python-package/pull/20
@@ -173,7 +183,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.3...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.3...0.8.0
 [0.7.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.2...0.7.3
 [0.7.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.0...0.7.1
