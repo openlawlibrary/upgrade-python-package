@@ -55,7 +55,7 @@ def get_compatible_upgrade_versions(
     )
     logging.debug(f"Found compatible versions: {compatible_versions}")
 
-    return sorted(compatible_versions, reverse=True)
+    return sorted(compatible_versions, reverse=True, key=Version)
 
 
 def get_installed_version(requirements_obj: Any, venv_executable: str) -> Optional[str]:
