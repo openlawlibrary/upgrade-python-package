@@ -28,6 +28,7 @@ def _create_venv(path, version, venv_name=None):
     venv_path = str(Path(path, venv_name))
     run(original_executable, "-m", "venv", venv_path)
     venv_executable = get_venv_executable(venv_path)
+    run(venv_executable, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel")
     run(
         venv_executable,
         "-m",
