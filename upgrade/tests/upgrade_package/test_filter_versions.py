@@ -1,5 +1,5 @@
 import pytest
-from pip._vendor.packaging.specifiers import SpecifierSet
+from packaging.specifiers import SpecifierSet
 
 from upgrade.scripts.requirements import filter_versions
 

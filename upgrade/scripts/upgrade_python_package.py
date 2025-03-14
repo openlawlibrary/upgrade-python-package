@@ -7,8 +7,8 @@ import site
 from importlib import util
 from pathlib import Path
 
-from pip._vendor.packaging.specifiers import SpecifierSet
-from pip._vendor.packaging.utils import parse_wheel_filename
+from packaging.specifiers import SpecifierSet
+from packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
 from upgrade.scripts.requirements import filter_versions
