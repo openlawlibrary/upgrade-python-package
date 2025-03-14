@@ -6,9 +6,9 @@ from typing import Any, List, Optional
 from urllib.parse import urljoin
 
 import lxml.etree as et
-import pip._vendor.requests as requests
-from pip._vendor.packaging.utils import parse_wheel_filename
-from pip._vendor.packaging.version import Version
+import requests as requests
+from packaging.utils import parse_wheel_filename
+from packaging.version import Version
 
 from upgrade.scripts.requirements import (
     filter_versions,

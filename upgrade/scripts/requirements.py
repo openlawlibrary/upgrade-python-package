@@ -67,7 +67,7 @@ def to_requirements_obj(requirements: str) -> Any:
         we import the vendored version. This way we guarantee
         that the packaging APIs are matching pip's behavior exactly.
         """
-        from pip._vendor.packaging.requirements import Requirement
+        from packaging.requirements import Requirement
 
         return Requirement(requirements)
     except Exception as e:
