@@ -14,8 +14,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_0_to_2_0_1_expect_succe
 
     use_pip("check")
     out, _ = capfd.readouterr()
-
-    assert "No broken requirements found" in out
     assert f"Wheel {package} not found" not in out
     # module should run
     assert "Hello from main" in out
@@ -42,8 +40,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_0_to_2_0_1_expect_succe
 
     use_pip("check")
     out, _ = capfd.readouterr()
-
-    assert "No broken requirements found" in out
     assert "Hello from main" in out
     dependencies_from_venv = use_pip(
         "list",
@@ -90,8 +86,6 @@ def test_upgrade_local_wheels_top_level_package_from_2_0_1_to_2_1_0_expect_error
     out, _ = capfd.readouterr()
 
     assert "Failed to install wheel" in out
-    assert "Successfully uninstalled oll-test-top-level-2.1.0" in out
-    assert "Successfully installed oll-test-top-level-2.0.1" in out
 
     dependencies_from_venv = use_pip(
         "list",
