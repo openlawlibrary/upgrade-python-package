@@ -119,12 +119,14 @@ def installer(*args, **kwargs):
     behavior/output (e.g. `pip list --format json`, `pip check`). For install
     operations we prefer `uv pip` for speed and modern resolution.
     """
-    py_executable = kwargs.pop("py_executable", None)
+    py_executable = kwargs.pop("py_executable", None) or sys.executable
     if shutil.which("uv") is not None:
-        cmd = ["uv", "pip"]
-        if py_executable is not None:
-            cmd.extend(["--python", str(py_executable)])
-        cmd.extend([str(arg) for arg in args])
+        if not args:
+            raise ValueError("installer() requires a uv pip subcommand")
+
+        subcommand = str(args[0])
+        cmd = ["uv", "pip", subcommand, "-p", str(py_executable)]
+        cmd.extend([str(arg) for arg in args[1:]])
         return run(*cmd, **kwargs)
     return pip(*args, py_executable=py_executable, **kwargs)
 
