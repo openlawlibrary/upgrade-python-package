@@ -15,6 +15,7 @@ from upgrade.scripts.utils import (
     is_development_cloudsmith,
     run,
     pip,
+    installer,
     create_directory,
     get_venv_executable,
     on_rm_error,
@@ -52,7 +53,7 @@ def venv(*args, **kwargs):
 def install_system_dependencies(venv_executable: str) -> None:
     for dependency in SYSTEM_DEPENDENCIES:
         try:
-            pip(
+            installer(
                 "install",
                 "--upgrade",
                 f"{dependency}",
@@ -76,14 +77,14 @@ def install_upgrade_python_package(
     try:
         if local_installation_path:
             # for local testing of unreleased upgrade-python-package
-            pip(
+            installer(
                 "install",
                 "-e",
                 str(Path(local_installation_path)),
                 py_executable=venv_executable,
             )
         else:
-            pip(
+            installer(
                 "install",
                 "--upgrade",
                 upgrade_python_package,

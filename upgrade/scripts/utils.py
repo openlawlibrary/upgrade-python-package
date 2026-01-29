@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -109,6 +110,23 @@ def run(*command, **kwargs):
         print(completed.stdout)
         logging.info("Completed. Output: %s", completed.stdout)
     return completed.stdout.rstrip() if completed.returncode == 0 else None
+
+
+def installer(*args, **kwargs):
+    """Install/uninstall packages using uv when available.
+
+    We keep the dedicated `pip()` helper for commands where callers rely on pip
+    behavior/output (e.g. `pip list --format json`, `pip check`). For install
+    operations we prefer `uv pip` for speed and modern resolution.
+    """
+    py_executable = kwargs.pop("py_executable", None)
+    if shutil.which("uv") is not None:
+        cmd = ["uv", "pip"]
+        if py_executable is not None:
+            cmd.extend(["--python", str(py_executable)])
+        cmd.extend([str(arg) for arg in args])
+        return run(*cmd, **kwargs)
+    return pip(*args, py_executable=py_executable, **kwargs)
 
 
 def run_python_module(module_name, *args, **kwargs):

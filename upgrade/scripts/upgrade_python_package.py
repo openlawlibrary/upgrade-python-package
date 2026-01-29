@@ -16,6 +16,7 @@ from upgrade.scripts.slack import send_slack_notification
 from upgrade.scripts.utils import (
     is_development_cloudsmith,
     is_package_already_installed,
+    installer,
     pip,
     run,
     run_python_module,
@@ -34,7 +35,7 @@ def upgrade_and_run(
     cloudsmith_url=None,
     update_all=False,
     slack_webhook_url=None,
-    constraints_path = None,
+    constraints_path=None,
     *args,
 ):
     """
@@ -188,7 +189,7 @@ def install_with_constraints(
                 ]
             )
         install_args.extend(args)
-        resp = pip(*install_args)
+        resp = installer(*install_args)
         return resp
     except Exception:
         logging.error("Failed to install wheel %s", wheel_path)
@@ -217,7 +218,7 @@ def install_wheel(
         try:
             wheel_paths = sorted(
                 glob.glob(
-                    f'{wheels_path}/{package_name.replace("-", "_").replace("==","-")}*.whl'
+                    f"{wheels_path}/{package_name.replace('-', '_').replace('==', '-')}*.whl"
                 )
             )
             wheel_names = [Path(path).name for path in wheel_paths]
@@ -265,11 +266,13 @@ def install_wheel(
     if args:
         install_args.extend(args)
     try:
-        resp += pip(*install_args)
+        resp += installer(*install_args)
         resp += pip("check")
     except:
         # try to install with constraints
-        constraints_file_path = constraints_path or get_constraints_file_path(package_name)
+        constraints_file_path = constraints_path or get_constraints_file_path(
+            package_name
+        )
         try:
             resp += install_with_constraints(
                 to_install,
@@ -300,10 +303,21 @@ def install_wheel(
                 else:
                     if cloudsmith_url:
                         reinstall_args.extend(["--index-url", cloudsmith_url])
-                pip(*reinstall_args)
+                installer(*reinstall_args)
             else:
                 raise
     return resp
+
+
+def _normalize_version_spec(version: str) -> str:
+    if version is None:
+        return version
+    version = version.strip()
+    if version == "":
+        return version
+    if version.startswith(("==", ">=", "<=", "~=", "!=", ">", "<")):
+        return version
+    return f"=={version}"
 
 
 def upgrade_from_local_wheel(
@@ -334,7 +348,13 @@ def upgrade_from_local_wheel(
     if not skip_post_install:
         module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
-    return "Successfully installed" in resp, resp
+    installed_version = is_package_already_installed(package_name)
+    if version:
+        spec = SpecifierSet(_normalize_version_spec(version))
+        success = installed_version is not None and spec.contains(installed_version)
+    else:
+        success = installed_version is not None
+    return success, resp
 
 
 def attempt_to_install_version(
@@ -354,12 +374,13 @@ def attempt_to_install_version(
         pip_args.append("--upgrade")
     args = tuple(arg for arg in pip_args)
     try:
+        normalized_version = _normalize_version_spec(version)
         resp = install_wheel(
             package_install_cmd,
             cloudsmith_url,
             False,
             None,
-            version,
+            normalized_version,
             update_all,
             slack_webhook_url,
             constraints_path,
@@ -369,7 +390,14 @@ def attempt_to_install_version(
         logging.info(f"Could not find {package_install_cmd} {version}")
         print(f"Could not find {package_install_cmd} {version}")
         return False, str(e)
-    return "Successfully installed" in resp, resp
+    package_name, _ = split_package_name_and_extra(package_install_cmd)
+    installed_version = is_package_already_installed(package_name)
+    try:
+        spec = SpecifierSet(normalized_version)
+        success = installed_version is not None and spec.contains(installed_version)
+    except Exception:
+        success = installed_version is not None
+    return success, resp
 
 
 def attempt_upgrade(
@@ -391,6 +419,9 @@ def attempt_upgrade(
     pip_args.append("--upgrade")
     args = tuple(arg for arg in pip_args)
 
+    package_name, _ = split_package_name_and_extra(package_install_cmd)
+    before_version = is_package_already_installed(package_name)
+
     resp = install_wheel(
         package_install_cmd,
         cloudsmith_url,
@@ -402,7 +433,8 @@ def attempt_upgrade(
         constraints_path,
         *args,
     )
-    was_upgraded = "Requirement already up-to-date" not in resp
+    after_version = is_package_already_installed(package_name)
+    was_upgraded = before_version != after_version
     if was_upgraded:
         logging.info('"%s" package was upgraded.', package_install_cmd)
     else:
@@ -424,7 +456,7 @@ def reload_uwsgi_app(package_name):
 
 
 def run_initial_post_install(package_name, *args):
-    file_name = f'{package_name.replace("-", "_")}_run_post_install'
+    file_name = f"{package_name.replace('-', '_')}_run_post_install"
     file_path = os.path.join("/opt/var", file_name)
     run_post_install = os.path.isfile(file_path)
     if run_post_install:
@@ -574,9 +606,7 @@ parser.add_argument(
     help="Slack webhook url string for sending slack notifications on failed upgrade",
 )
 parser.add_argument(
-    "--constraints-path",
-    action="store",
-    help="Path to constraints.txt file"
+    "--constraints-path", action="store", help="Path to constraints.txt file"
 )
 
 
@@ -687,5 +717,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()
