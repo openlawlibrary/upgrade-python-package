@@ -140,7 +140,7 @@ def upgrade_venv(
             if update_from_local_wheels:
                 upgrade_args.append("--update-from-local-wheels")
 
-            result += run(*(upgrade_args), check=False)
+            result += run(*(upgrade_args), check=False) or ""
 
         return result
     except Exception as e:
@@ -226,7 +226,7 @@ def temporary_upgrade_venv(venv_path: str, blue_green_deployment: bool) -> str:
         if backup_venv_path.exists():
             shutil.rmtree(backup_venv_path, onerror=on_rm_error)
 
-        shutil.copytree(venv_path, str(backup_venv_path))
+        shutil.copytree(venv_path, str(backup_venv_path), symlinks=True)
         yield get_venv_executable(backup_venv_path)
     except Exception as e:
         logging.error(f"Error occurred while creating temporary venv: {str(e)}")
