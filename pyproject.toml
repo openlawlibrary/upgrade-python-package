@@ -1,0 +1,71 @@
+[build-system]
+requires = [
+  "setuptools>=68",
+  "setuptools_scm>=8",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "upgrade-python-package"
+description = "A script for upgrading python packages"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Open Law Library", email = "info@openlawlib.org" },
+]
+keywords = ["upgrade", "python", "package"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Topic :: Software Development :: Build Tools",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "lxml>=4.9",
+  "requests==2.*",
+  "packaging>=24.1",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+  "wheel",
+]
+test = [
+  "flake8",
+  "pytest",
+  "mock",
+  "setuptools",
+]
+
+[project.scripts]
+upgrade = "upgrade.scripts.upgrade_python_package:main"
+managevenv = "upgrade.scripts.manage_venv:main"
+find-compatible-version = "upgrade.scripts.find_compatible_versions:main"
+
+[project.urls]
+Homepage = "https://github.com/openlawlibrary/upgrade-python-package"
+Changelog = "https://github.com/openlawlibrary/upgrade-python-package/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["upgrade*"]
+
+[tool.setuptools_scm]
+write_to = "upgrade/_version.py"
+write_to_template = "__version__ = \"{version}\"\n"
