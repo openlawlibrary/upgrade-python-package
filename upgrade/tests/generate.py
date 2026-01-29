@@ -7,9 +7,6 @@ from pathlib import Path
 import shutil
 
 
-create_wheel_regex = re.compile(r"creating '(.+)\.whl")
-
-
 @contextmanager
 def chdir(dir):
     prev_cwd = os.getcwd()
@@ -71,10 +68,11 @@ if __name__ == "__main__":
                 version_path.touch()
             version_path.write_text(version)
         with chdir(str(path)):
-            resp = run("python", "setup.py", "bdist_wheel")
-            match = create_wheel_regex.findall(resp)
-            if match is None:
-                print(f"Failed to build {path}")
-            else:
-                wheel_path = path / f"{match[0]}.whl"
-            shutil.copy(str(wheel_path), str(wheels_path))
+            run(
+                "python",
+                "-m",
+                "build",
+                "--wheel",
+                "--outdir",
+                str(wheels_path),
+            )
