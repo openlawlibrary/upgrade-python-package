@@ -6,6 +6,7 @@ import os
 import site
 from importlib import util
 from pathlib import Path
+from typing import Optional
 
 from packaging.specifiers import SpecifierSet
 from packaging.utils import parse_wheel_filename
@@ -309,7 +310,7 @@ def install_wheel(
     return resp
 
 
-def _normalize_version_spec(version: str) -> str:
+def _normalize_version_spec(version: Optional[str]) -> Optional[str]:
     if version is None:
         return version
     version = version.strip()
