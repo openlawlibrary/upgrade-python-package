@@ -46,6 +46,7 @@ dev = [
 test = [
   "build",
   "flake8",
+  "flake8-pyproject",
   "pytest",
   "mock",
   "setuptools",
@@ -70,3 +71,12 @@ include = ["upgrade*"]
 [tool.setuptools_scm]
 write_to = "upgrade/_version.py"
 write_to_template = "__version__ = \"{version}\"\n"
+
+[tool.flake8]
+max-line-length = 100
+exclude = [
+  ".git",
+  ".eggs",
+  "build",
+  "venv",
+]
