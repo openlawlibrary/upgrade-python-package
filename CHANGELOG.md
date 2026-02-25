@@ -11,10 +11,15 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 ### Added
 
 ### Changed
+- Migrate packaging metadata to `pyproject.toml` / PEP 517 build backend ([#24])
+- Prefer `uv pip` for installs (fall back to `pip` when `uv` is unavailable) ([#24])
+- Run CI tests in an isolated `uv` virtualenv instead of installing into the runner environment ([#24])
 
 ### Fixed
 
 ### Removed
+
+[#24]: https://github.com/openlawlibrary/upgrade-python-package/pull/24
 
 ## [0.8.1]
 
