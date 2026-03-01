@@ -16,6 +16,20 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Removed
 
+## [0.9.1]
+
+### Added
+
+### Changed
+
+### Fixed
+- Ensure post-install modules run when dependency-only upgrades change installed packages. ([#26])
+- Fail `manage_venv` upgrade flow when child `upgrade` commands exit non-zero instead of silently continuing. ([#26])
+
+### Removed
+
+[#26]: https://github.com/openlawlibrary/upgrade-python-package/pull/26
+
 ## [0.9.0]
 
 ### Added
@@ -215,7 +229,9 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/0.8.1...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.3...0.8.0
 [0.7.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.7.2...0.7.3
