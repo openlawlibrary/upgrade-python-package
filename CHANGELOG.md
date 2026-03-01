@@ -11,9 +11,10 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 ### Added
 
 ### Changed
+- Replace table-style `project.license` metadata with SPDX `Apache-2.0` and remove deprecated license classifiers so packaging remains compatible with modern setuptools behavior.
 
 ### Fixed
-
+- Remove stale `MANIFEST.in` include/exclude rules that referenced files not shipped in this repo, eliminating noisy build-time "no files found" warnings.
 ### Removed
 
 ## [0.9.0]
