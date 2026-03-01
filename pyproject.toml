@@ -11,7 +11,7 @@ name = "upgrade-python-package"
 description = "A script for upgrading python packages"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 authors = [
   { name = "Open Law Library", email = "info@openlawlib.org" },
 ]
@@ -21,7 +21,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
   "Topic :: Software Development :: Build Tools",
-  "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.8",
