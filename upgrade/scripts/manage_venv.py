@@ -140,7 +140,12 @@ def upgrade_venv(
             if update_from_local_wheels:
                 upgrade_args.append("--update-from-local-wheels")
 
-            result += run(*(upgrade_args), check=False) or ""
+            upgrade_output = run(*(upgrade_args), check=False)
+            if upgrade_output is None:
+                raise UpgradeError(
+                    f"Upgrade command failed for dependency {dependency}"
+                )
+            result += upgrade_output
 
         return result
     except Exception as e:
