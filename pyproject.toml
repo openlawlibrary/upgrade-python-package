@@ -11,7 +11,7 @@ name = "upgrade-python-package"
 description = "A script for upgrading python packages"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "Apache-2.0"
+license = { file = "LICENSE" }
 authors = [
   { name = "Open Law Library", email = "info@openlawlib.org" },
 ]
