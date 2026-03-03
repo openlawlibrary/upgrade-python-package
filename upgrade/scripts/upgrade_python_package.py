@@ -401,6 +401,27 @@ def attempt_to_install_version(
     return success, resp
 
 
+def _get_installed_packages_snapshot():
+    try:
+        packages_json = pip("list", "--format", "json")
+        if not packages_json:
+            return None
+        decoder = json.JSONDecoder()
+        parsed_results, _ = decoder.raw_decode(str(packages_json))
+    except Exception as e:
+        logging.warning("Failed to read installed package snapshot: %s", e)
+        return None
+
+    snapshot = {}
+    for package in parsed_results:
+        name = package.get("name")
+        version = package.get("version")
+        if name is None or version is None:
+            continue
+        snapshot[str(name)] = str(version)
+    return snapshot
+
+
 def attempt_upgrade(
     package_install_cmd,
     cloudsmith_url=None,
@@ -421,6 +442,7 @@ def attempt_upgrade(
     args = tuple(arg for arg in pip_args)
 
     package_name, _ = split_package_name_and_extra(package_install_cmd)
+    before_snapshot = _get_installed_packages_snapshot()
     before_version = is_package_already_installed(package_name)
 
     resp = install_wheel(
@@ -434,8 +456,13 @@ def attempt_upgrade(
         constraints_path,
         *args,
     )
+
+    after_snapshot = _get_installed_packages_snapshot()
     after_version = is_package_already_installed(package_name)
+
     was_upgraded = before_version != after_version
+    if not was_upgraded and before_snapshot is not None and after_snapshot is not None:
+        was_upgraded = before_snapshot != after_snapshot
     if was_upgraded:
         logging.info('"%s" package was upgraded.', package_install_cmd)
     else:
