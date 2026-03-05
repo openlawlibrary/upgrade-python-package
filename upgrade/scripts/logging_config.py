@@ -1,3 +1,14 @@
+"""Shared logging helpers for cron-oriented upgrade scripts.
+
+The logging model is intentionally simple for operations:
+- one INFO summary line per run in the regular log
+- stack traces and failures in the companion error log
+- detailed execution chatter at DEBUG level
+
+Handlers created by this module are tagged and cleaned up selectively so importing
+applications keep their own logging handlers and root-level behavior.
+"""
+
 import logging
 import sys
 from logging.handlers import WatchedFileHandler
@@ -27,6 +38,10 @@ def _mark_upgrade_handler(handler: logging.Handler) -> None:
 
 
 def _remove_upgrade_handlers(root: logging.Logger) -> None:
+    """Remove only handlers that were created by this package.
+
+    This avoids clobbering logger state for applications that import these scripts.
+    """
     for handler in list(root.handlers):
         if _is_upgrade_handler(handler):
             root.removeHandler(handler)
@@ -34,6 +49,7 @@ def _remove_upgrade_handlers(root: logging.Logger) -> None:
 
 
 def get_error_log_path(log_location: str) -> str:
+    """Build the companion error-log path from a regular log path."""
     log_path = Path(log_location)
     if log_path.suffix:
         return str(log_path.with_name(f"{log_path.stem}.error{log_path.suffix}"))
@@ -47,6 +63,14 @@ def configure_logging(
     test: bool,
     level: int = logging.INFO,
 ) -> Tuple[Optional[str], Optional[str]]:
+    """Configure upgrade-script handlers on the root logger.
+
+    Non-test mode writes to two files:
+    - regular log receives records below ERROR
+    - error log receives ERROR and above
+
+    Test/fallback mode writes to stderr.
+    """
     root = logging.getLogger()
     _remove_upgrade_handlers(root)
     has_foreign_handlers = any(
@@ -92,6 +116,11 @@ def configure_script_logging(
     default_log_location: str,
     test: bool,
 ) -> Tuple[Optional[str], Optional[str]]:
+    """Script-level logging setup with resilient fallback.
+
+    If file logging fails (for example, missing permissions on /var/log), this
+    falls back to stderr logging so the script can still complete and emit status.
+    """
     try:
         return configure_logging(
             log_location=log_location,
@@ -115,6 +144,7 @@ def configure_script_logging(
 
 
 def _summary_value(value: Optional[object]) -> str:
+    """Normalize summary values so output stays parseable and explicit."""
     if value is None:
         return "unknown"
     value_text = str(value)
@@ -133,6 +163,11 @@ def log_run_summary(
     result: str,
     duration_seconds: float,
 ) -> None:
+    """Emit a single high-signal run summary line at INFO level.
+
+    The output is key-value formatted so operators can grep quickly and also parse
+    it mechanically in log pipelines without JSON formatting requirements.
+    """
     logging.info(
         "summary script=%s package=%s current=%s target=%s final=%s result=%s duration_s=%.2f",
         script,
