@@ -12,6 +12,16 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.9.2]
+
+### Added
+
+### Changed
+
 - Improve logging observability with dedicated regular and error logs. ([#28])
 
 ### Fixed
@@ -236,7 +246,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.1...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/0.8.0...0.8.1
