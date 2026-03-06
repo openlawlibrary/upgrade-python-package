@@ -142,7 +142,7 @@ def run_python_module(module_name, *args, **kwargs):
         # check for arguments stored in an environment variable UPDATE_MODULE_NAME
         var_name = f"UPDATE_{module_name.upper()}"
         args = tuple(os.environ.get(var_name, "").split())
-    logging.info("running %s python module", module_name)
+    logging.debug("running %s python module", module_name)
     py_executable = kwargs.pop("py_executable", sys.executable)
     try:
         return run(*((py_executable, "-m", module_name) + args), **kwargs)
