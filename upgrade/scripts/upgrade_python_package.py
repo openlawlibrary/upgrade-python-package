@@ -54,6 +54,7 @@ def upgrade_and_run(
     package_name = package_install_cmd.split("[", 1)[0]
     was_updated = False
     response_err = ""
+    result = "unchanged"
     if version is not None:
         logging.debug(
             "Trying to install version %s of package %s", version, package_name
@@ -66,6 +67,7 @@ def upgrade_and_run(
             slack_webhook_url,
             constraints_path,
         )
+        result = "upgraded" if was_updated else "upgrade_failed"
     else:
         logging.debug('Trying to upgrade "%s" package.', package_name)
         was_updated, response_err = attempt_upgrade(
@@ -76,6 +78,7 @@ def upgrade_and_run(
             constraints_path,
             *args,
         )
+        result = "upgraded" if was_updated else "unchanged"
     if not skip_post_install and (was_updated or force):
         module_name = package_name.replace("-", "_")
         try_running_module(
@@ -84,7 +87,7 @@ def upgrade_and_run(
             cloudsmith_url=cloudsmith_url,
             slack_webhook_url=slack_webhook_url,
         )
-    return was_updated, response_err
+    return result, response_err
 
 
 def get_constraints_file_path(package_name, site_packages_dir=None):
@@ -349,7 +352,7 @@ def upgrade_from_local_wheel(
         )
     except Exception as e:
         response_err = str(e)
-        return False, response_err
+        return "upgrade_failed", response_err
     if not skip_post_install:
         module_name = package_name.replace("-", "_").split("==")[0]
         try_running_module(module_name, *args)
@@ -359,7 +362,8 @@ def upgrade_from_local_wheel(
         success = installed_version is not None and spec.contains(installed_version)
     else:
         success = installed_version is not None
-    return success, resp
+    result = "upgraded" if success else "upgrade_failed"
+    return result, resp
 
 
 def attempt_to_install_version(
@@ -700,6 +704,7 @@ def upgrade_python_package(
     success = False
     run_succeeded = False
     response_output = ""
+    operation_result = "unchanged"
     start_time = time.monotonic()
     package_name, _ = split_package_name_and_extra(package)
     current_version = None
@@ -722,7 +727,7 @@ def upgrade_python_package(
         wheels_path = wheels_path or "/vagrant/wheels"
         slack_webhook_url = slack_webhook_url or os.environ.get("SLACK_WEBHOOK_URL")
         if update_from_local_wheels:
-            success, response_output = upgrade_from_local_wheel(
+            operation_result, response_output = upgrade_from_local_wheel(
                 package,
                 skip_post_install,
                 wheels_path=wheels_path,
@@ -732,10 +737,11 @@ def upgrade_python_package(
                 constraints_path=constraints_path,
                 *vars,
             )
+            success = operation_result == "upgraded"
         elif should_run_initial_post_install:
             run_initial_post_install(package, *vars)
         else:
-            success, response_output = upgrade_and_run(
+            operation_result, response_output = upgrade_and_run(
                 package,
                 force,
                 skip_post_install,
@@ -746,6 +752,7 @@ def upgrade_python_package(
                 constraints_path,
                 *vars,
             )
+            success = operation_result == "upgraded"
         run_succeeded = True
     except Exception as e:
         logging.exception("Upgrade run failed package=%s", package)
@@ -760,12 +767,8 @@ def upgrade_python_package(
 
         if not run_succeeded:
             result = "errored"
-        elif success:
-            result = "upgraded"
-        elif response_output:
-            result = "upgrade_failed"
         else:
-            result = "unchanged"
+            result = operation_result
 
         log_run_summary(
             script="upgrade_python_package",
