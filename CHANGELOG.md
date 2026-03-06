@@ -12,7 +12,11 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+- Reduce routine `pip` module logging noise so operator-facing logs stay focused on run summaries.
+
 ### Fixed
+
+- Keep upgrade run summaries accurate by reserving `upgrade_failed` for actual failed upgrade paths instead of unchanged runs with command output.
 
 ### Removed
 
