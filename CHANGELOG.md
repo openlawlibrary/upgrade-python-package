@@ -12,9 +12,16 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+- Improve logging observability with dedicated regular and error logs. ([#28])
+
 ### Fixed
 
+- Fall back to stderr logging when file logging cannot be initialized. ([#28])
+- Removing upgrade-owned handlers and leave root level unchanged when foreign handlers are present. ([#28])
+
 ### Removed
+
+[#28]: https://github.com/openlawlibrary/upgrade-python-package/pull/28
 
 ## [0.9.1]
 

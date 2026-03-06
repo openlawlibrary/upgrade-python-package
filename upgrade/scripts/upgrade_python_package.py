@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import site
+import time
 from importlib import util
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,7 @@ from packaging.specifiers import SpecifierSet
 from packaging.utils import parse_wheel_filename
 
 from upgrade.scripts.exceptions import PipFormatDecodeFailed
+from upgrade.scripts.logging_config import configure_script_logging, log_run_summary
 from upgrade.scripts.requirements import filter_versions
 from upgrade.scripts.slack import send_slack_notification
 from upgrade.scripts.utils import (
@@ -53,7 +55,7 @@ def upgrade_and_run(
     was_updated = False
     response_err = ""
     if version is not None:
-        logging.info(
+        logging.debug(
             "Trying to install version %s of package %s", version, package_name
         )
         was_updated, response_err = attempt_to_install_version(
@@ -65,7 +67,7 @@ def upgrade_and_run(
             constraints_path,
         )
     else:
-        logging.info('Trying to upgrade "%s" package.', package_name)
+        logging.debug('Trying to upgrade "%s" package.', package_name)
         was_updated, response_err = attempt_upgrade(
             package_install_cmd,
             cloudsmith_url,
@@ -165,11 +167,11 @@ def install_with_constraints(
             wheel_path,
         ]
         if constraints_file_path:
-            logging.info("Installing wheel with constraints %s", wheel_path)
+            logging.debug("Installing wheel with constraints %s", wheel_path)
             install_args.extend(["-c", constraints_file_path])
         else:
             # install without constraints for backwards compatibility
-            logging.info(
+            logging.debug(
                 "No constraints.txt found. Installing wheel %s without constraints.txt",
                 wheel_path,
             )
@@ -193,7 +195,7 @@ def install_with_constraints(
         resp = installer(*install_args)
         return resp
     except Exception:
-        logging.error("Failed to install wheel %s", wheel_path)
+        logging.exception("Failed to install wheel %s", wheel_path)
         print("Failed to install wheel %s" % wheel_path)
         raise
 
@@ -235,9 +237,11 @@ def install_wheel(
             else:
                 wheel = parsed_wheel_versions[-1]
         except IndexError:
+            logging.error("Wheel %s not found", package_name)
             print(f"Wheel {package_name} not found")
             raise
         except Exception as e:
+            logging.error("Failed to install wheel %s: %s", package_name, e)
             print(f"Failed to install wheel {package_name} due to error: {e}")
             raise
         to_install = wheel + extra
@@ -388,7 +392,7 @@ def attempt_to_install_version(
             *args,
         )
     except Exception as e:
-        logging.info(f"Could not find {package_install_cmd} {version}")
+        logging.warning("Could not find %s %s", package_install_cmd, version)
         print(f"Could not find {package_install_cmd} {version}")
         return False, str(e)
     package_name, _ = split_package_name_and_extra(package_install_cmd)
@@ -420,6 +424,27 @@ def _get_installed_packages_snapshot():
             continue
         snapshot[str(name)] = str(version)
     return snapshot
+
+
+def _get_updated_packages(before_snapshot, after_snapshot):
+    if before_snapshot is None or after_snapshot is None:
+        return []
+
+    package_names = sorted(set(before_snapshot) | set(after_snapshot))
+    updated_packages = []
+    for package_name in package_names:
+        before_version = before_snapshot.get(package_name)
+        after_version = after_snapshot.get(package_name)
+        if before_version == after_version:
+            continue
+        updated_packages.append(
+            {
+                "package": package_name,
+                "from": before_version,
+                "to": after_version,
+            }
+        )
+    return updated_packages
 
 
 def attempt_upgrade(
@@ -460,19 +485,33 @@ def attempt_upgrade(
     after_snapshot = _get_installed_packages_snapshot()
     after_version = is_package_already_installed(package_name)
 
+    updated_packages = _get_updated_packages(before_snapshot, after_snapshot)
     was_upgraded = before_version != after_version
-    if not was_upgraded and before_snapshot is not None and after_snapshot is not None:
-        was_upgraded = before_snapshot != after_snapshot
+    if not was_upgraded and updated_packages:
+        was_upgraded = True
+
     if was_upgraded:
-        logging.info('"%s" package was upgraded.', package_install_cmd)
+        logging.debug(
+            '"%s" package was upgraded. from=%s to=%s updated_count=%s',
+            package_install_cmd,
+            before_version,
+            after_version,
+            len(updated_packages),
+        )
+        if updated_packages:
+            logging.debug("Updated packages detail: %s", updated_packages)
     else:
-        logging.info('"%s" package was already up-to-date.', package_install_cmd)
+        logging.debug(
+            '"%s" package was already up-to-date. version=%s',
+            package_install_cmd,
+            after_version,
+        )
     return was_upgraded, resp
 
 
 def reload_uwsgi_app(package_name):
     uwsgi_vassals_dir = "/etc/uwsgi/vassals"
-    logging.info("Reloading uwsgi app %s", package_name)
+    logging.debug("Reloading uwsgi app %s", package_name)
     ini_file_path = os.path.join(uwsgi_vassals_dir, f"{package_name}.ini")
     if not os.path.isfile(ini_file_path):
         logging.debug("%s is not a uwsgi app", package_name)
@@ -488,7 +527,7 @@ def run_initial_post_install(package_name, *args):
     file_path = os.path.join("/opt/var", file_name)
     run_post_install = os.path.isfile(file_path)
     if run_post_install:
-        logging.info("Running initial post install of package %s", package_name)
+        logging.debug("Running initial post install of package %s", package_name)
         module_name = package_name.replace("-", "_")
         try_running_module(module_name, *args)
         # delete the file to avoid running post install again
@@ -503,7 +542,10 @@ def run_module_and_reload_uwsgi_app(module_name, *args):
 
 def send_upgrade_notification(header, cloudsmith_url, slack_webhook_url):
     try:
-        log_filepath = get_log_file_path().as_posix() or "log file"
+        log_file_path = get_log_file_path()
+        log_filepath = (
+            log_file_path.as_posix() if log_file_path is not None else "log file"
+        )
         server_metadata = get_server_metadata()
         environment = "dev" if is_development_cloudsmith(cloudsmith_url) else "prod"
         text = f"{environment.upper()} - For more details, please audit {str(log_filepath)} at ({server_metadata})."
@@ -512,8 +554,8 @@ def send_upgrade_notification(header, cloudsmith_url, slack_webhook_url):
             text,
             slack_webhook_url,
         )
-    except Exception as e:
-        logging.error(f"Failed to send upgrade notification due to error: {e}")
+    except Exception:
+        logging.exception("Failed to send upgrade notification")
         raise
 
 
@@ -548,7 +590,7 @@ def try_running_module(wheel, *args, **kwargs):
                 )
             raise
     else:
-        logging.info("No module named %s", module_name)
+        logging.warning("No module named %s", module_name)
         print(f"No module named {module_name}")
 
 
@@ -656,17 +698,25 @@ def upgrade_python_package(
     *vars,
 ):
     success = False
+    run_succeeded = False
     response_output = ""
+    start_time = time.monotonic()
+    package_name, _ = split_package_name_and_extra(package)
+    current_version = None
+    final_version = None
+
+    configure_script_logging(
+        log_location=log_location,
+        default_log_location="/var/log/upgrade_python_package.log",
+        test=test,
+    )
+
     try:
-        if test:
-            logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        else:
-            log_location = log_location or "/var/log/upgrade_python_package.log"
-            logging.basicConfig(
-                filename=log_location,
-                level=logging.WARNING,
-                format="%(asctime)s %(message)s",
-            )
+        current_version = is_package_already_installed(package_name)
+    except Exception:
+        logging.debug("Unable to read current package version for %s", package_name)
+
+    try:
         if cloudsmith_url:
             is_cloudsmith_url_valid(cloudsmith_url)
         wheels_path = wheels_path or "/vagrant/wheels"
@@ -696,17 +746,43 @@ def upgrade_python_package(
                 constraints_path,
                 *vars,
             )
+        run_succeeded = True
     except Exception as e:
+        logging.exception("Upgrade run failed package=%s", package)
         if not format_output:
-            raise e
+            raise
         response_output += str(e)
-    if format_output:
-        while len(logging.root.handlers) > 0:
-            logging.root.removeHandler(logging.root.handlers[-1])
-        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        response = json.dumps({"success": success, "responseOutput": response_output})
-        logging.info(response)
-        print(response)
+    finally:
+        try:
+            final_version = is_package_already_installed(package_name)
+        except Exception:
+            logging.debug("Unable to read final package version for %s", package_name)
+
+        if not run_succeeded:
+            result = "errored"
+        elif success:
+            result = "upgraded"
+        elif response_output:
+            result = "upgrade_failed"
+        else:
+            result = "unchanged"
+
+        log_run_summary(
+            script="upgrade_python_package",
+            package=package_name,
+            current=current_version,
+            target=version,
+            final=final_version,
+            result=result,
+            duration_seconds=time.monotonic() - start_time,
+        )
+
+        if format_output:
+            response = json.dumps(
+                {"success": success, "responseOutput": response_output}
+            )
+            logging.debug(response)
+            print(response)
 
 
 def main():

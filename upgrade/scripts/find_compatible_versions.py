@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import time
 from enum import Enum
 from typing import Any, List, Optional
 from urllib.parse import urljoin
@@ -10,6 +11,7 @@ import requests as requests
 from packaging.utils import parse_wheel_filename
 from packaging.version import Version
 
+from upgrade.scripts.logging_config import configure_script_logging, log_run_summary
 from upgrade.scripts.requirements import (
     filter_versions,
     parse_requirements_txt,
@@ -80,7 +82,7 @@ def get_compatible_version(
     installed_version = get_installed_version(requirements_obj, venv_executable)
     if not installed_version:
         raise Exception(f"Package {requirements_obj.name} is not installed")
-    logging.info(f"Found installed version: {installed_version}")
+    logging.debug("Found installed version: %s", installed_version)
 
     upgrade_versions = get_compatible_upgrade_versions(requirements_obj, cloudsmith_url)
     for upgrade_version in upgrade_versions:
@@ -116,38 +118,58 @@ def find_compatible_versions(
     or if requirements or requirements_file is not provided.
     """
     response_status = {}
+    start_time = time.monotonic()
+    package_name = None
+    current_version = None
+    target = None
+    result = "errored"
+
+    configure_script_logging(
+        log_location=log_location,
+        default_log_location="/var/log/find_compatible_versions.log",
+        test=bool(test),
+    )
+
     try:
         if requirements is None and requirements_file is None:
             raise Exception("Either requirements or requirements_file is required.")
-        if test:
-            logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        else:
-            log_location = log_location or "/var/log/manage_venv.log"
-            logging.basicConfig(
-                filename=log_location,
-                level=logging.WARNING,
-                format="%(asctime)s %(message)s",
-            )
         if cloudsmith_url:
             is_cloudsmith_url_valid(cloudsmith_url)
 
         requirements = requirements or parse_requirements_txt(requirements_file)
+        requirements_obj = to_requirements_obj(requirements)
+        package_name = requirements_obj.name
+        venv_executable = get_venv_executable(venv_path)
+        current_version = is_package_already_installed(package_name, venv_executable)
+
         upgrade_version = get_compatible_version(
-            to_requirements_obj(requirements), venv_path, cloudsmith_url
+            requirements_obj, venv_path, cloudsmith_url
         )
         if upgrade_version:
             response_status["responseStatus"] = CompatibleUpgradeStatus.AVAILABLE.value
-            logging.info(f"Found compatible upgrade version: {upgrade_version}")
+            target = upgrade_version
+            result = "upgrade_available"
         else:
-            response_status[
-                "responseStatus"
-            ] = CompatibleUpgradeStatus.AT_LATEST_VERSION.value
-            logging.info("At latest upgrade version")
-    except Exception as e:
+            response_status["responseStatus"] = (
+                CompatibleUpgradeStatus.AT_LATEST_VERSION.value
+            )
+            result = "unchanged"
+    except Exception:
         response_status["responseStatus"] = CompatibleUpgradeStatus.ERROR.value
-        logging.error(e)
-        raise e
+        result = "errored"
+        logging.exception("find_compatible_versions run failed")
+        raise
     finally:
+        log_run_summary(
+            script="find_compatible_versions",
+            package=package_name,
+            current=current_version,
+            target=target,
+            final=current_version,
+            result=result,
+            duration_seconds=time.monotonic() - start_time,
+        )
+
         response = json.dumps(response_status)
         print(response)
 

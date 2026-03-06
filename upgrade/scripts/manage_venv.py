@@ -5,11 +5,13 @@ import shutil
 import subprocess
 import sys
 import json
+import time
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional
 
+from upgrade.scripts.logging_config import configure_script_logging, log_run_summary
 from upgrade.scripts.requirements import parse_requirements_txt, to_requirements_obj
 from upgrade.scripts.utils import (
     is_development_cloudsmith,
@@ -262,7 +264,7 @@ def build_and_upgrade_venv(
         auto_upgrade = True
         msg = "Requirements changed. Creating new virtualenv."
         print(msg)
-        logging.info(msg)
+        logging.debug(msg)
         py_executable = create_venv(
             envs_home,
             requirements,
@@ -274,7 +276,7 @@ def build_and_upgrade_venv(
         if not auto_upgrade:
             msg = "Requirements did not change. Returning venv executable."
             print(msg)
-            logging.info(msg)
+            logging.debug(msg)
             return py_executable
         _check_venv_consistent(requirements_obj, py_executable)
 
@@ -292,7 +294,7 @@ def build_and_upgrade_venv(
                     additional_dependencies or [],
                     log_location,
                 )
-                logging.info(response)
+                logging.debug(response)
             except Exception as e:
                 logging.error(
                     f"Unexpected error occurred while upgrading {requirements_obj.name}{requirements_obj.specifier} {str(e)}"
@@ -322,23 +324,27 @@ def manage_venv(
     local_installation_path: Optional[str] = None,
 ):
     response_status = {}
+    start_time = time.monotonic()
+    package_name = None
+    target = None
+
+    configure_script_logging(
+        log_location=log_location,
+        default_log_location="/var/log/manage_venv.log",
+        test=bool(test),
+    )
+
     try:
         if requirements is None and requirements_file is None:
             raise Exception("Either requirements or requirements_file is required.")
 
-        if test:
-            logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-        else:
-            log_location = log_location or "/var/log/manage_venv.log"
-            logging.basicConfig(
-                filename=log_location,
-                level=logging.WARNING,
-                format="%(asctime)s %(message)s",
-            )
         if cloudsmith_url:
             is_cloudsmith_url_valid(cloudsmith_url)
 
         requirements = requirements or parse_requirements_txt(requirements_file)
+        requirements_obj = to_requirements_obj(requirements)
+        package_name = requirements_obj.name
+        target = str(requirements_obj.specifier) or None
 
         build_and_upgrade_venv(
             requirements,
@@ -354,11 +360,23 @@ def manage_venv(
             local_installation_path,
         )
         response_status["responseStatus"] = VenvUpgradeStatus.UPGRADED.value
-    except Exception as e:
-        logging.error(e)
+    except Exception:
+        logging.exception("manage_venv run failed")
         response_status["responseStatus"] = VenvUpgradeStatus.ERROR.value
-        raise e
+        raise
     finally:
+        status = response_status.get("responseStatus")
+        result = "upgraded" if status == VenvUpgradeStatus.UPGRADED.value else "errored"
+        log_run_summary(
+            script="manage_venv",
+            package=package_name,
+            current=None,
+            target=target,
+            final=None,
+            result=result,
+            duration_seconds=time.monotonic() - start_time,
+        )
+
         response = json.dumps(response_status)
         print(response)
 

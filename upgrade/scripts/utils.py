@@ -78,6 +78,9 @@ def run(*command, **kwargs):
         command = command[0].split()
     print(*command)
     command = [word.format(**os.environ) for word in command]
+    logging.debug(
+        'Running command executable="%s" arg_count=%s', command[0], len(command) - 1
+    )
     try:
         options = dict(
             stdout=subprocess.PIPE,
@@ -108,7 +111,7 @@ def run(*command, **kwargs):
         raise err
     if completed.stdout:
         print(completed.stdout)
-        logging.info("Completed. Output: %s", completed.stdout)
+        logging.debug("Completed. Output: %s", completed.stdout)
     return completed.stdout.rstrip() if completed.returncode == 0 else None
 
 
