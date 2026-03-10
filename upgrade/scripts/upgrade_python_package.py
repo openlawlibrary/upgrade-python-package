@@ -17,6 +17,7 @@ from upgrade.scripts.logging_config import configure_script_logging, log_run_sum
 from upgrade.scripts.requirements import filter_versions
 from upgrade.scripts.slack import send_slack_notification
 from upgrade.scripts.utils import (
+    format_exception,
     is_development_cloudsmith,
     is_package_already_installed,
     installer,
@@ -351,7 +352,7 @@ def upgrade_from_local_wheel(
             constraints_path=constraints_path,
         )
     except Exception as e:
-        response_err = str(e)
+        response_err = format_exception(e)
         return "upgrade_failed", response_err
     if not skip_post_install:
         module_name = package_name.replace("-", "_").split("==")[0]
@@ -398,7 +399,7 @@ def attempt_to_install_version(
     except Exception as e:
         logging.warning("Could not find %s %s", package_install_cmd, version)
         print(f"Could not find {package_install_cmd} {version}")
-        return False, str(e)
+        return False, format_exception(e)
     package_name, _ = split_package_name_and_extra(package_install_cmd)
     installed_version = is_package_already_installed(package_name)
     try:
@@ -758,7 +759,7 @@ def upgrade_python_package(
         logging.exception("Upgrade run failed package=%s", package)
         if not format_output:
             raise
-        response_output += str(e)
+        response_output += format_exception(e)
     finally:
         try:
             final_version = is_package_already_installed(package_name)

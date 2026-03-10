@@ -115,6 +115,29 @@ def run(*command, **kwargs):
     return completed.stdout.rstrip() if completed.returncode == 0 else None
 
 
+def format_exception(exc: Exception) -> str:
+    """Return a readable error string, including subprocess output when present."""
+    if isinstance(exc, subprocess.CalledProcessError):
+        command = exc.cmd
+        if isinstance(command, (list, tuple)):
+            command = " ".join(str(part) for part in command)
+
+        parts = [f'Command "{command}" returned non-zero exit status {exc.returncode}.']
+
+        output = exc.stdout if exc.stdout is not None else exc.output
+        output = output.strip() if isinstance(output, str) else output
+        stderr = exc.stderr.strip() if isinstance(exc.stderr, str) else exc.stderr
+
+        if output:
+            parts.append(f"Output:\n{output}")
+        if stderr and stderr != output:
+            parts.append(f"Stderr:\n{stderr}")
+
+        return "\n".join(parts)
+
+    return str(exc)
+
+
 def installer(*args, **kwargs):
     """Install/uninstall packages using uv when available.
 
