@@ -12,6 +12,32 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.9.4]
+
+### Added
+
+- Add regression tests that lock Cloudsmith-first/PyPI-fallback index argument ordering across constrained installs, primary installs, and rollback reinstalls.
+
+### Changed
+
+- Improve formatted upgrade errors to include subprocess command output and stderr details for failed install paths.
+
+### Fixed
+
+- Restore expected dependency source selection under `uv pip` by consistently preferring Cloudsmith while retaining PyPI fallback in all related install code paths.
+
+### Removed
+
+## [0.9.3]
+
+### Added
+
+### Changed
+
 - Reduce routine `pip` module logging noise so operator-facing logs stay focused on run summaries.
 
 ### Fixed
@@ -250,7 +276,9 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.2...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.4...HEAD
+[0.9.4]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.3...v0.9.4
+[0.9.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.8.1...v0.9.0
