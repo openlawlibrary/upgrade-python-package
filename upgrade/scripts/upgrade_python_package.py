@@ -29,6 +29,7 @@ from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
+PYPI_SIMPLE_URL = "https://pypi.python.org/simple/"
 
 
 def upgrade_and_run(
@@ -153,6 +154,18 @@ def get_server_metadata():
     return f"{user}@{ip}"
 
 
+def _get_index_args(cloudsmith_url: Optional[str]) -> list:
+    if not cloudsmith_url:
+        return []
+
+    return [
+        "--extra-index-url",
+        cloudsmith_url,
+        "--index-url",
+        PYPI_SIMPLE_URL,
+    ]
+
+
 def install_with_constraints(
     wheel_path,
     constraints_file_path,
@@ -186,15 +199,7 @@ def install_with_constraints(
                     wheels_dir,
                 ]
             )
-        if cloudsmith_url:
-            install_args.extend(
-                [
-                    "--extra-index-url",
-                    "https://pypi.python.org/simple/",
-                    "--index-url",
-                    cloudsmith_url,
-                ]
-            )
+        install_args.extend(_get_index_args(cloudsmith_url))
         install_args.extend(args)
         resp = installer(*install_args)
         return resp
@@ -268,8 +273,7 @@ def install_wheel(
 
     install_args = ["install", to_install]
 
-    if cloudsmith_url is not None:
-        install_args.extend(["--index-url", cloudsmith_url])
+    install_args.extend(_get_index_args(cloudsmith_url))
     if not update_all:
         install_args.extend(["--no-deps"])
     if args:
@@ -310,8 +314,7 @@ def install_wheel(
                 if local:
                     reinstall_args.extend(["--find-links", wheels_path])
                 else:
-                    if cloudsmith_url:
-                        reinstall_args.extend(["--index-url", cloudsmith_url])
+                    reinstall_args.extend(_get_index_args(cloudsmith_url))
                 installer(*reinstall_args)
             else:
                 raise
