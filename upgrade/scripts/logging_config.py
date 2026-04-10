@@ -15,8 +15,7 @@ from logging.handlers import WatchedFileHandler
 from pathlib import Path
 from typing import Optional, Tuple
 
-DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
-DEFAULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(name)s:%(lineno)s] %(message)s"
 UPGRADE_HANDLER_ATTR = "_upgrade_handler"
 
 
@@ -77,7 +76,7 @@ def configure_logging(
         not _is_upgrade_handler(handler) for handler in root.handlers
     )
 
-    formatter = logging.Formatter(DEFAULT_LOG_FORMAT, datefmt=DEFAULT_DATE_FORMAT)
+    formatter = logging.Formatter(DEFAULT_LOG_FORMAT)
 
     if test:
         stream_handler = logging.StreamHandler(sys.stderr)
