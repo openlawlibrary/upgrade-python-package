@@ -144,8 +144,7 @@ def get_uv_executable():
     Prefer the binary bundled with the `uv` PyPI package, which is a declared
     dependency and therefore present wherever this tool is installed. Fall back to a
     `uv` found on PATH for environments where the package is not yet importable.
-    Returns None if neither is available, in which case callers fall back to pip
-    (this fallback is removed in a later step once uv is fully relied upon).
+    Returns None if neither is available.
     """
     try:
         from uv import find_uv_bin
@@ -156,23 +155,28 @@ def get_uv_executable():
 
 
 def installer(*args, **kwargs):
-    """Install/uninstall packages using uv when available.
+    """Install/uninstall packages using uv.
 
-    We keep the dedicated `pip()` helper for commands where callers rely on pip
-    behavior/output (e.g. `pip list --format json`, `pip check`). For install
-    operations we prefer `uv pip` for speed and modern resolution.
+    uv is the sole installer: it is a declared dependency located via
+    `get_uv_executable()`, so every install/uninstall operation goes through it. The
+    dedicated `pip()` helper is retained only for read-only inspection where callers
+    rely on pip output (`pip list --format json`, `pip check`). A missing uv is a
+    hard error rather than a silent pip fallback, which previously caused uv-vs-pip
+    divergence across machines.
     """
+    if not args:
+        raise ValueError("installer() requires a uv pip subcommand")
     py_executable = kwargs.pop("py_executable", None) or sys.executable
     uv_bin = get_uv_executable()
-    if uv_bin is not None:
-        if not args:
-            raise ValueError("installer() requires a uv pip subcommand")
+    if uv_bin is None:
+        raise RuntimeError(
+            "uv executable not found; the 'uv' package is a required dependency"
+        )
 
-        subcommand = str(args[0])
-        cmd = [uv_bin, "pip", subcommand, "-p", str(py_executable)]
-        cmd.extend([str(arg) for arg in args[1:]])
-        return run(*cmd, **kwargs)
-    return pip(*args, py_executable=py_executable, **kwargs)
+    subcommand = str(args[0])
+    cmd = [uv_bin, "pip", subcommand, "-p", str(py_executable)]
+    cmd.extend([str(arg) for arg in args[1:]])
+    return run(*cmd, **kwargs)
 
 
 def run_python_module(module_name, *args, **kwargs):
