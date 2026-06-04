@@ -21,7 +21,6 @@ from upgrade.scripts.utils import (
     is_development_cloudsmith,
     is_package_already_installed,
     installer,
-    pip,
     uv_pip,
     run,
     run_python_module,

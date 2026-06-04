@@ -3,7 +3,7 @@ import os
 import pytest
 from mock import patch
 
-from upgrade.scripts.upgrade_python_package import pip
+from upgrade.scripts.utils import pip
 from ..conftest import VENV_PATH, WHEELS_DIR
 
 CLOUDSMITH_URL = os.environ.get("CLOUDSMITH_URL", False)

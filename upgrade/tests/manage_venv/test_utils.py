@@ -1,4 +1,4 @@
-from upgrade.scripts.upgrade_python_package import pip
+from upgrade.scripts.utils import pip
 
 
 def assert_dependencies_installed_in_venv(venv_executable, expected_version):

@@ -1,6 +1,5 @@
 import pytest
 from pathlib import Path
-from mock import patch
 from upgrade.scripts.upgrade_python_package import get_constraints_file_path
 from upgrade.tests.upgrade_package.conftest import VENV_PATH, install_local_package
 

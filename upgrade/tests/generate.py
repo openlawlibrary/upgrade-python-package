@@ -2,9 +2,7 @@ import argparse
 from contextlib import contextmanager
 import subprocess
 import os
-import re
 from pathlib import Path
-import shutil
 
 
 @contextmanager

@@ -3,7 +3,7 @@ from pathlib import Path
 from upgrade.scripts.manage_venv import (
     build_and_upgrade_venv,
 )
-from upgrade.scripts.upgrade_python_package import pip
+from upgrade.scripts.utils import pip
 from upgrade.scripts.utils import get_venv_executable
 from upgrade.tests.manage_venv.test_utils import assert_dependencies_installed_in_venv
 

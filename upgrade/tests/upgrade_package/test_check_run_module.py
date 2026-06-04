@@ -1,4 +1,3 @@
-from mock import patch
 from upgrade.scripts.upgrade_python_package import try_running_module
 from upgrade.tests.upgrade_package.conftest import install_local_package
 
