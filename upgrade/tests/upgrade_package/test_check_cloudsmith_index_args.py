@@ -43,7 +43,8 @@ def test_install_wheel_prefers_cloudsmith_with_pypi_fallback(monkeypatch):
         "installer",
         lambda *args: calls.append(args) or "",
     )
-    monkeypatch.setattr(script, "pip", lambda *args: "")
+    # install_wheel runs its post-install consistency check via uv_pip("check").
+    monkeypatch.setattr(script, "uv_pip", lambda *args: "")
     monkeypatch.setattr(script, "is_package_already_installed", lambda package: None)
 
     script.install_wheel(
@@ -72,14 +73,16 @@ def test_install_wheel_reinstall_prefers_cloudsmith_with_pypi_fallback(monkeypat
         calls.append(args)
         return ""
 
-    def fake_pip(*args):
+    def fake_check(*args):
+        # Force the post-install consistency check (uv_pip("check")) to fail so the
+        # constraints/revert path runs.
         raise subprocess.CalledProcessError(1, list(args))
 
     def fail_install_with_constraints(*args, **kwargs):
         raise RuntimeError("constraints failed")
 
     monkeypatch.setattr(script, "installer", fake_installer)
-    monkeypatch.setattr(script, "pip", fake_pip)
+    monkeypatch.setattr(script, "uv_pip", fake_check)
     monkeypatch.setattr(
         script,
         "install_with_constraints",

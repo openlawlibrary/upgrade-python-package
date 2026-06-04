@@ -21,7 +21,7 @@ def _capture_installer_calls(monkeypatch):
     calls = []
     monkeypatch.setattr(upp, "installer", lambda *a, **k: calls.append(a) or "")
     # `pip check` and the installed-version lookup are irrelevant to arg construction.
-    monkeypatch.setattr(upp, "pip", lambda *a, **k: "")
+    monkeypatch.setattr(upp, "uv_pip", lambda *a, **k: "")
     monkeypatch.setattr(upp, "is_package_already_installed", lambda *a, **k: None)
     return calls
 
