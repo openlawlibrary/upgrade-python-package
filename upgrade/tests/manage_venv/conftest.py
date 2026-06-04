@@ -15,10 +15,12 @@ THIS_FOLDER = Path(__file__).parent
 ENVIRONMENTS_DIR = THIS_FOLDER.parent / "Environments"
 UPGRADE_PYTHON_PACKAGE_REPOSITORY_PATH = THIS_FOLDER.parent.parent.parent
 
+# `uv venv` does not create the empty `include/` directory that `python -m venv`
+# creates; the venv is otherwise a valid, working venv, so we no longer assert it.
 EXPECTED_VENV_FILES = (
     ["pyvenv.cfg", "Scripts", "Lib"]
     if is_windows()
-    else ["pyvenv.cfg", "bin", "lib", "include"]
+    else ["pyvenv.cfg", "bin", "lib"]
 )
 
 def _create_venv(path, version, venv_name=None):

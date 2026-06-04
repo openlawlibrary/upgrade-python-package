@@ -19,6 +19,7 @@ from upgrade.scripts.utils import (
     pip,
     installer,
     create_directory,
+    get_uv_executable,
     get_venv_executable,
     on_rm_error,
 )
@@ -31,41 +32,29 @@ class VenvUpgradeStatus(Enum):
     ERROR = "ERROR"
 
 
-SYSTEM_DEPENDENCIES = ["pip", "setuptools"]
 upgrade_success_re = re.compile(r'{"success": (true|false)')
 response_output_re = re.compile(r'"responseOutput": "(.*?)"')
 
 
-def ensure_pip(venv_executable, *args, **kwargs):
-    try:
-        return run(*((venv_executable, "-m", "ensurepip") + args), **kwargs)
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Error occurred while running pip in venv {str(e)}")
-        raise e
-
-
 def venv(*args, **kwargs):
+    """Create a virtualenv with uv, seeding pip into it.
+
+    `uv venv --seed` replaces the previous `python -m venv --without-pip` + ensurepip
+    + pip/setuptools upgrade sequence. pip is seeded so the read-only inspection calls
+    (`pip list` / `pip check`) and any pip-based post-install keep working. The venv is
+    built from the same interpreter running this tool (`sys.executable`), matching the
+    previous behavior. setuptools is intentionally not installed: it is unused, and uv
+    only seeds it on older Pythons anyway.
+    """
+    uv_bin = get_uv_executable()
     try:
-        return run(*((sys.executable, "-m", "venv", "--without-pip") + args), **kwargs)
+        return run(
+            *((uv_bin, "venv", "--seed", "--python", sys.executable) + args),
+            **kwargs,
+        )
     except subprocess.CalledProcessError as e:
         logging.error(f"Error occurred while creating venv {str(e)}")
         raise e
-
-
-def install_system_dependencies(venv_executable: str) -> None:
-    for dependency in SYSTEM_DEPENDENCIES:
-        try:
-            installer(
-                "install",
-                "--upgrade",
-                f"{dependency}",
-                py_executable=venv_executable,
-            )
-        except subprocess.CalledProcessError as e:
-            logging.error(
-                f"Error occurred while upgrading running pip upgrade {dependency} {str(e)}"
-            )
-            raise e
 
 
 def install_upgrade_python_package(
@@ -205,10 +194,8 @@ def create_venv(
     """Create a virtualenv and install upgrade-python-package in it."""
     env_path = _get_venv_path(envs_home, requirements)
     create_directory(env_path)
-    venv(*[str(env_path)])
+    venv(str(env_path))
     py_executable = get_venv_executable(str(env_path))
-    ensure_pip(py_executable)
-    install_system_dependencies(py_executable)
     install_upgrade_python_package(
         py_executable, upgrade_python_package_version, local_installation_path
     )
