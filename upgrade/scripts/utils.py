@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 development_url_re = re.compile(r"([^']+development[^']+)")
-development_index_re = re.compile(r"install.index-url='([^']+development[^']+)'")
 
 
 def create_directory(path: Path) -> None:
@@ -38,15 +37,18 @@ def is_windows() -> bool:
 
 
 def is_development_cloudsmith(cloudsmith_url):
-    if cloudsmith_url is not None:
-        return development_url_re.search(cloudsmith_url) is not None
-    try:
-        pip_config = pip("config", "list")
-    except subprocess.CalledProcessError as e:
-        logging.warning("config command not found.")
-        pip_config = ""
+    """Return True if the given Cloudsmith URL points at the development index.
 
-    return development_index_re.search(pip_config) is not None
+    Development mode is determined solely from the explicit Cloudsmith URL (our
+    development index carries the literal "development"). There is no ambient
+    pip-config fallback: uv ignores pip's configuration, so inspecting it would read a
+    source of truth that does not govern uv's installs. Callers that need prereleases
+    pass a development `--cloudsmith-url` or `--pre` explicitly; a missing URL is
+    simply not development.
+    """
+    if cloudsmith_url is None:
+        return False
+    return development_url_re.search(cloudsmith_url) is not None
 
 
 def on_rm_error(_func, path, _exc_info):
