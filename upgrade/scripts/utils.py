@@ -154,18 +154,20 @@ def get_uv_executable():
         return shutil.which("uv")
 
 
-def installer(*args, **kwargs):
-    """Install/uninstall packages using uv.
+def uv_pip(*args, **kwargs):
+    """Run a `uv pip` subcommand against the given (or current) interpreter.
 
-    uv is the sole installer: it is a declared dependency located via
-    `get_uv_executable()`, so every install/uninstall operation goes through it. The
-    dedicated `pip()` helper is retained only for read-only inspection where callers
-    rely on pip output (`pip list --format json`, `pip check`). A missing uv is a
-    hard error rather than a silent pip fallback, which previously caused uv-vs-pip
-    divergence across machines.
+    Single entry point for every uv pip operation -- both mutating (install,
+    uninstall) and read-only inspection (list, check). uv is a declared dependency
+    located via `get_uv_executable()`; a missing uv is a hard error rather than a
+    silent pip fallback, which previously caused uv-vs-pip divergence across machines.
+
+    Note for callers that parse stdout: `run()` merges stderr into stdout, and uv
+    writes a "Using Python ... environment at:" banner to stderr, so pass `-q` to keep
+    the output machine-readable (e.g. `uv pip list --format json -q`).
     """
     if not args:
-        raise ValueError("installer() requires a uv pip subcommand")
+        raise ValueError("uv_pip() requires a uv pip subcommand")
     py_executable = kwargs.pop("py_executable", None) or sys.executable
     uv_bin = get_uv_executable()
     if uv_bin is None:
@@ -173,10 +175,14 @@ def installer(*args, **kwargs):
             "uv executable not found; the 'uv' package is a required dependency"
         )
 
-    subcommand = str(args[0])
-    cmd = [uv_bin, "pip", subcommand, "-p", str(py_executable)]
+    cmd = [uv_bin, "pip", str(args[0]), "-p", str(py_executable)]
     cmd.extend([str(arg) for arg in args[1:]])
     return run(*cmd, **kwargs)
+
+
+def installer(*args, **kwargs):
+    """Install/uninstall packages using uv (the sole installer)."""
+    return uv_pip(*args, **kwargs)
 
 
 def run_python_module(module_name, *args, **kwargs):
@@ -200,7 +206,7 @@ def is_package_already_installed(package, py_executable=None):
     if py_executable is None:
         py_executable = sys.executable
 
-    results = pip("list", "--format", "json", py_executable=py_executable)
+    results = uv_pip("list", "--format", "json", "-q", py_executable=py_executable)
     try:
         decoder = json.JSONDecoder()
         parsed_results, _ = decoder.raw_decode(results)

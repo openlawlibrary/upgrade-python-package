@@ -16,7 +16,7 @@ from upgrade.scripts.requirements import parse_requirements_txt, to_requirements
 from upgrade.scripts.utils import (
     is_development_cloudsmith,
     run,
-    pip,
+    uv_pip,
     installer,
     create_directory,
     get_uv_executable,
@@ -150,7 +150,7 @@ def _check_venv_consistent(
     requirements_obj: Any, venv_executable: str, venv_response: Optional[str] = None
 ) -> None:
     try:
-        pip("check", py_executable=venv_executable)
+        uv_pip("check", py_executable=venv_executable)
     except:
         msg = f"Error occurred while checking venv at path: {venv_executable}"
         if venv_response is not None:

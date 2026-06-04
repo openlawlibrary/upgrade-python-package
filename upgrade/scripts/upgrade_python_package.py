@@ -22,6 +22,7 @@ from upgrade.scripts.utils import (
     is_package_already_installed,
     installer,
     pip,
+    uv_pip,
     run,
     run_python_module,
 )
@@ -280,7 +281,7 @@ def install_wheel(
         install_args.extend(args)
     try:
         resp += installer(*install_args)
-        resp += pip("check")
+        resp += uv_pip("check")
     except:
         # try to install with constraints
         constraints_file_path = constraints_path or get_constraints_file_path(
@@ -415,7 +416,7 @@ def attempt_to_install_version(
 
 def _get_installed_packages_snapshot():
     try:
-        packages_json = pip("list", "--format", "json")
+        packages_json = uv_pip("list", "--format", "json", "-q")
         if not packages_json:
             return None
         decoder = json.JSONDecoder()
