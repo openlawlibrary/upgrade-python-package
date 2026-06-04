@@ -138,6 +138,23 @@ def format_exception(exc: Exception) -> str:
     return str(exc)
 
 
+def get_uv_executable():
+    """Locate the uv binary.
+
+    Prefer the binary bundled with the `uv` PyPI package, which is a declared
+    dependency and therefore present wherever this tool is installed. Fall back to a
+    `uv` found on PATH for environments where the package is not yet importable.
+    Returns None if neither is available, in which case callers fall back to pip
+    (this fallback is removed in a later step once uv is fully relied upon).
+    """
+    try:
+        from uv import find_uv_bin
+
+        return find_uv_bin()
+    except (ImportError, FileNotFoundError):
+        return shutil.which("uv")
+
+
 def installer(*args, **kwargs):
     """Install/uninstall packages using uv when available.
 
@@ -146,12 +163,13 @@ def installer(*args, **kwargs):
     operations we prefer `uv pip` for speed and modern resolution.
     """
     py_executable = kwargs.pop("py_executable", None) or sys.executable
-    if shutil.which("uv") is not None:
+    uv_bin = get_uv_executable()
+    if uv_bin is not None:
         if not args:
             raise ValueError("installer() requires a uv pip subcommand")
 
         subcommand = str(args[0])
-        cmd = ["uv", "pip", subcommand, "-p", str(py_executable)]
+        cmd = [uv_bin, "pip", subcommand, "-p", str(py_executable)]
         cmd.extend([str(arg) for arg in args[1:]])
         return run(*cmd, **kwargs)
     return pip(*args, py_executable=py_executable, **kwargs)
