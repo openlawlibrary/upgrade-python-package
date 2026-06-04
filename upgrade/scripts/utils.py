@@ -181,7 +181,13 @@ def uv_pip(*args, **kwargs):
 
 
 def installer(*args, **kwargs):
-    """Install/uninstall packages using uv (the sole installer)."""
+    """Install/uninstall packages using uv.
+
+    Intent-revealing alias over `uv_pip()` for the mutating operations (install,
+    uninstall): call sites that change the environment read as `installer(...)`,
+    while read-only inspection (list, check) calls `uv_pip(...)` directly. Both share
+    the single uv runner; the two names exist only to signal intent at call sites.
+    """
     return uv_pip(*args, **kwargs)
 
 
