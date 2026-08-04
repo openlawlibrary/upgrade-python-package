@@ -59,3 +59,22 @@ def test_get_compatible_version_where_current_is_2_0_0_and_venv_without_specifie
     expected = "2.1.0"
 
     assert actual == expected
+
+
+def test_get_compatible_version_where_index_page_lists_a_non_wheel_sdist_expect_it_is_ignored(
+    initial_v2_0_0_venv,
+    envs_home,
+    mock_package_index_html_with_sdist_entry,
+):
+    cut = get_compatible_version
+
+    requirements = "oll-test-top-level~=2.0.0"
+    venv_path = Path(envs_home, requirements)
+
+    actual = cut(
+        requirements_obj=to_requirements_obj(requirements),
+        venv_path=str(venv_path),
+    )
+    expected = "2.0.1"
+
+    assert actual == expected

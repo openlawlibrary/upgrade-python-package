@@ -124,6 +124,35 @@ def mock_package_index_html():
         yield
 
 
+@pytest.fixture()
+def mock_package_index_html_with_sdist_entry():
+    """Mirrors a real Cloudsmith index page that also lists a non-wheel sdist
+    (e.g. a stray oll-test-top-level-0.0.0.tar.gz from an earlier bad publish),
+    to guard against parse_wheel_filename crashing on it.
+    """
+    index_html_page = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mock package index html page for testing compatible dependencies script.</title>
+    </head>
+    <body>
+    <h1>Links for oll-top-level-package</h1>
+    <a>oll-test-top-level-0.0.0.tar.gz</a><br />
+    <a>oll_test_top_level-1.0.0-py3-none-any.whl</a><br />
+    <a>oll_test_top_level-2.0.0-py3-none-any.whl</a><br />
+    <a>oll_test_top_level-2.0.1-py3-none-any.whl</a><br />
+    <a>oll_test_top_level-2.1.0-py3-none-any.whl</a><br />
+    </body>
+    </html>
+    """
+    with patch(
+        "upgrade.scripts.find_compatible_versions._get_package_index_html",
+        lambda *_,: index_html_page,
+    ):
+        yield
+
+
 def install_upgrade_python_package(venv_executable, *rest):
     run(
         *([
