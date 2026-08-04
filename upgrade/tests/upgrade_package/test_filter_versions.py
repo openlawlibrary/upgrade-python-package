@@ -25,3 +25,21 @@ def test_filter_versions_with_different_specifiers(
     actual = cut(specifier_set, available_versions)
 
     assert actual == expected
+
+
+def test_filter_versions_where_channel_is_dev_only_expect_none_found_by_default():
+    cut = filter_versions
+
+    actual = cut(SpecifierSet("~=2.21"), ["2.21.6.dev184", "2.21.6.dev200"])
+
+    assert actual == []
+
+
+def test_filter_versions_where_channel_is_dev_only_and_prereleases_true_expect_all_found():
+    cut = filter_versions
+
+    actual = cut(
+        SpecifierSet("~=2.21"), ["2.21.6.dev184", "2.21.6.dev200"], prereleases=True
+    )
+
+    assert actual == ["2.21.6.dev184", "2.21.6.dev200"]

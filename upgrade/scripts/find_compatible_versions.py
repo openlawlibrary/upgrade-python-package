@@ -17,7 +17,11 @@ from upgrade.scripts.requirements import (
     parse_requirements_txt,
     to_requirements_obj,
 )
-from upgrade.scripts.utils import get_venv_executable, is_package_already_installed
+from upgrade.scripts.utils import (
+    get_venv_executable,
+    is_development_cloudsmith,
+    is_package_already_installed,
+)
 from upgrade.scripts.validations import is_cloudsmith_url_valid
 
 
@@ -48,12 +52,16 @@ def get_compatible_upgrade_versions(
     tree = et.HTML(package_index_html)
     anchor_tags_el = tree.xpath("//a")
     parsed_packages_versions = [
-        parse_wheel_filename(tag_el.text)[1] for tag_el in anchor_tags_el
+        parse_wheel_filename(tag_el.text)[1]
+        for tag_el in anchor_tags_el
+        if tag_el.text and tag_el.text.endswith(".whl")
     ]
     logging.debug(f"Parsed packages versions: {parsed_packages_versions}")
 
     compatible_versions = filter_versions(
-        requirements_obj.specifier, parsed_packages_versions
+        requirements_obj.specifier,
+        parsed_packages_versions,
+        prereleases=is_development_cloudsmith(cloudsmith_url),
     )
     logging.debug(f"Found compatible versions: {compatible_versions}")
 

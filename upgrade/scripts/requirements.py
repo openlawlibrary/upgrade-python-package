@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def filter_versions(
-    specifier_set: Any, parsed_packages_versions: List[Any]
+    specifier_set: Any, parsed_packages_versions: List[Any], prereleases: bool = False
 ) -> List[str]:
     """Returns a list of versions that are compatible with the `SpecifierSet`.
 
@@ -21,8 +21,15 @@ def filter_versions(
     or:
         SpecifierSet("==2.5.14").filter(["2.5.14", "2.5.15", "2.6.0", "3.0.0"])
         returns ["2.5.14"]
+
+    prereleases defaults to False, matching SpecifierSet.filter()'s own default - pass True
+    for a dev/pre-release channel whose versions are all pre-releases, or every version
+    would otherwise be filtered out and no upgrade would ever be found.
     """
-    return [str(version) for version in specifier_set.filter(parsed_packages_versions)]
+    return [
+        str(version)
+        for version in specifier_set.filter(parsed_packages_versions, prereleases=prereleases)
+    ]
 
 
 def parse_requirements_txt(
