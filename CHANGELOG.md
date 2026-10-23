@@ -14,6 +14,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Fixed
 
+- Require `certifi>=2026.10.19` so installs drop the compromised eMudhra `emSign ECC Root CA - G3` root.
+
 ### Removed
 
 ## [0.9.4]
