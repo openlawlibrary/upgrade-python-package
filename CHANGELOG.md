@@ -14,9 +14,25 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Fixed
 
+### Removed
+
+## [0.9.5]
+
+### Added
+
+### Changed
+
+- Consolidate the log format to the OLL standard: `%(asctime)s [%(levelname)s] [%(name)s:%(lineno)s] %(message)s`, with Python's default timestamp format. ([#33])
+
+### Fixed
+
 - Require `certifi>=2026.10.19` so installs drop the compromised eMudhra `emSign ECC Root CA - G3` root.
+- Stop dev-channel upgrade checks from always reporting "at latest": pre-release builds are now considered, and non-wheel entries (such as a stray `.tar.gz`) on the index page no longer crash the check. ([#34])
 
 ### Removed
+
+[#33]: https://github.com/openlawlibrary/upgrade-python-package/pull/33
+[#34]: https://github.com/openlawlibrary/upgrade-python-package/pull/34
 
 ## [0.9.4]
 
@@ -278,7 +294,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.4...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.1...v0.9.2
