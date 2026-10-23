@@ -22,17 +22,18 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
-- Consolidate the log format to the OLL standard: `%(asctime)s [%(levelname)s] [%(name)s:%(lineno)s] %(message)s`, with Python's default timestamp format. ([#33])
+- Match the OLL standard log format, with Python's default timestamp format. ([#33])
 
 ### Fixed
 
-- Require `certifi>=2026.10.19` so installs drop the compromised eMudhra `emSign ECC Root CA - G3` root.
-- Stop dev-channel upgrade checks from always reporting "at latest": pre-release builds are now considered, and non-wheel entries (such as a stray `.tar.gz`) on the index page no longer crash the check. ([#34])
+- Require `certifi>=2026.10.19` to drop the compromised eMudhra root. ([#38])
+- Stop dev-channel upgrade checks from always reporting "at latest" by including pre-releases and tolerating non-wheel index entries. ([#34])
 
 ### Removed
 
 [#33]: https://github.com/openlawlibrary/upgrade-python-package/pull/33
 [#34]: https://github.com/openlawlibrary/upgrade-python-package/pull/34
+[#38]: https://github.com/openlawlibrary/upgrade-python-package/pull/38
 
 ## [0.9.4]
 
