@@ -35,6 +35,7 @@ classifiers = [
 dependencies = [
   "lxml>=4.9",
   "requests==2.*",
+  "certifi>=2026.10.19",
   "packaging>=24.1",
 ]
 dynamic = ["version"]
