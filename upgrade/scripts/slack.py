@@ -23,4 +23,5 @@ def send_slack_notification(header, text, token):
     try:
         notifier.post_message(header, text)
     except Exception as e:
-        raise SlackError(f"Could not send slack notification due to error {e}")
+        # Drop the requests message and traceback: both can contain the webhook URL.
+        raise SlackError(f"Could not send slack notification: {type(e).__name__}") from None

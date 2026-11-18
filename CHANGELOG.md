@@ -15,6 +15,7 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 ### Fixed
 
 - Run the initial post-install when the package name has an extra, such as `oll-portal[development]`.
+- Keep the Slack webhook URL out of the error and traceback logged when a Slack notification fails.
 
 ### Removed
 
