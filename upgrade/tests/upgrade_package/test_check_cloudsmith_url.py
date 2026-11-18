@@ -1,11 +1,7 @@
 from upgrade.scripts.validations import is_cloudsmith_url_valid
-try:
-    from contextlib import nullcontext as does_not_raise
-except ImportError:
-    pass
+from contextlib import nullcontext as does_not_raise
 from upgrade.tests.upgrade_package.conftest import CLOUDSMITH_URL
 import pytest
-import sys
 
 
 def test_check_cloudsmith_url_where_url_is_invalid_expect_error():
@@ -22,7 +18,6 @@ def test_check_cloudsmith_url_where_url_is_invalid_expect_error():
 
 
 @pytest.mark.skipif(not CLOUDSMITH_URL, reason="Valid cloudsmith url is not set.")
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_check_cloudsmith_url_where_url_is_valid_expect_success():
     cut = is_cloudsmith_url_valid
     with does_not_raise() as e:
