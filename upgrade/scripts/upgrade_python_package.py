@@ -30,6 +30,7 @@ from upgrade.scripts.validations import is_cloudsmith_url_valid
 DIST_INFO_RE_FORMAT = r"^{package_name}-.+\.dist-info$"
 PYTHON_VERSION_RE = r"^python3.[0-9]+$"
 PYPI_SIMPLE_URL = "https://pypi.python.org/simple/"
+POST_INSTALL_FLAG_DIR = "/opt/var"
 
 
 def upgrade_and_run(
@@ -532,7 +533,7 @@ def reload_uwsgi_app(package_name):
 
 def run_initial_post_install(package_name, *args):
     file_name = f"{package_name.replace('-', '_')}_run_post_install"
-    file_path = os.path.join("/opt/var", file_name)
+    file_path = os.path.join(POST_INSTALL_FLAG_DIR, file_name)
     run_post_install = os.path.isfile(file_path)
     if run_post_install:
         logging.debug("Running initial post install of package %s", package_name)
@@ -743,7 +744,7 @@ def upgrade_python_package(
             )
             success = operation_result == "upgraded"
         elif should_run_initial_post_install:
-            run_initial_post_install(package, *vars)
+            run_initial_post_install(package_name, *vars)
         else:
             operation_result, response_output = upgrade_and_run(
                 package,

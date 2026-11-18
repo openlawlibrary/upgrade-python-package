@@ -1,0 +1,32 @@
+from upgrade.scripts import upgrade_python_package as upp
+
+
+def test_upgrade_python_package_where_package_has_extra_expect_initial_post_install_runs(
+    tmp_path, monkeypatch
+):
+    package_dir = tmp_path / "site"
+    module_dir = package_dir / "post_install_probe"
+    module_dir.mkdir(parents=True)
+    marker = tmp_path / "ran"
+    (module_dir / "__init__.py").write_text("")
+    (module_dir / "__main__.py").write_text(
+        f"open({str(marker)!r}, 'w').close()\n"
+    )
+    monkeypatch.syspath_prepend(str(package_dir))
+    monkeypatch.setenv("PYTHONPATH", str(package_dir))
+
+    flag_dir = tmp_path / "flags"
+    flag_dir.mkdir()
+    flag = flag_dir / "post_install_probe_run_post_install"
+    flag.touch()
+    monkeypatch.setattr(upp, "POST_INSTALL_FLAG_DIR", str(flag_dir))
+
+    cut = upp.upgrade_python_package
+    cut(
+        "post-install-probe[development]",
+        should_run_initial_post_install=True,
+        test=True,
+    )
+
+    assert marker.exists()
+    assert not flag.exists()

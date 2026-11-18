@@ -14,6 +14,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Fixed
 
+- Run the initial post-install when the package name has an extra, such as `oll-portal[development]`.
+
 ### Removed
 
 ## [0.9.5]
