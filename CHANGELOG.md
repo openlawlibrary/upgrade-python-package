@@ -19,6 +19,7 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 - Run the initial post-install when the package name has an extra, such as `oll-portal[development]`.
 - Keep the Slack webhook URL out of the error and traceback logged when a Slack notification fails.
 - Keep the initial post-install flag when the package has no module to run, so a later `--run-initial-post-install` run can retry.
+- Send the Slack notice ("Failed to run module …") when the `--run-initial-post-install` post-install fails, as upgrades already do. Before, the failure was only logged.
 
 ### Removed
 
