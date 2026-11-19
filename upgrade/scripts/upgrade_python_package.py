@@ -534,12 +534,15 @@ def reload_uwsgi_app(package_name):
 def run_initial_post_install(package_name, *args):
     file_name = f"{package_name.replace('-', '_')}_run_post_install"
     file_path = os.path.join(POST_INSTALL_FLAG_DIR, file_name)
-    run_post_install = os.path.isfile(file_path)
-    if run_post_install:
-        logging.debug("Running initial post install of package %s", package_name)
-        module_name = package_name.replace("-", "_")
-        if try_running_module(module_name, *args):
-            os.remove(file_path)
+    if not os.path.isfile(file_path):
+        logging.info("No initial post-install flag at %s", file_path)
+        return "no_flag"
+    logging.debug("Running initial post install of package %s", package_name)
+    module_name = package_name.replace("-", "_")
+    if not try_running_module(module_name, *args):
+        return "no_module"
+    os.remove(file_path)
+    return "post_install_ran"
 
 
 def run_module_and_reload_uwsgi_app(module_name, *args):
@@ -744,7 +747,7 @@ def upgrade_python_package(
             )
             success = operation_result == "upgraded"
         elif should_run_initial_post_install:
-            run_initial_post_install(package_name, *vars)
+            operation_result = run_initial_post_install(package_name, *vars)
         else:
             operation_result, response_output = upgrade_and_run(
                 package,

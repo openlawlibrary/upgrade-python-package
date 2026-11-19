@@ -12,6 +12,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Changed
 
+- `--run-initial-post-install` logs the flag path when there is no flag, and the run summary reports `post_install_ran`, `no_flag` or `no_module` instead of `unchanged`.
+
 ### Fixed
 
 - Run the initial post-install when the package name has an extra, such as `oll-portal[development]`.
