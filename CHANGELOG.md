@@ -16,6 +16,10 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Removed
 
+- Support for Python 3.8 and 3.9. Python 3.10 or newer is required. ([#45])
+
+[#45]: https://github.com/openlawlibrary/upgrade-python-package/pull/45
+
 ## [0.9.6]
 
 ### Added
