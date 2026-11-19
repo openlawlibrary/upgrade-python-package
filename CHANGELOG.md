@@ -14,10 +14,30 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 
 ### Fixed
 
-- Run the initial post-install when the package name has an extra, such as `oll-portal[development]`.
-- Keep the Slack webhook URL out of the error and traceback logged when a Slack notification fails.
+### Removed
+
+## [0.9.6]
+
+### Added
+
+### Changed
+
+- `--run-initial-post-install` logs the flag path when there is no flag, and the run summary reports `post_install_ran`, `no_flag` or `no_module` instead of `unchanged`. ([#49])
+
+### Fixed
+
+- Run the initial post-install when the package name has an extra, such as `oll-portal[development]`. ([#41])
+- Keep the Slack webhook URL out of the error and traceback logged when a Slack notification fails. ([#46])
+- Keep the initial post-install flag when the package has no module to run, so a later `--run-initial-post-install` run can retry. ([#52])
+- Send the Slack notice ("Failed to run module …") when the `--run-initial-post-install` post-install fails, as upgrades already do. Before, the failure was only logged. ([#50])
 
 ### Removed
+
+[#41]: https://github.com/openlawlibrary/upgrade-python-package/pull/41
+[#46]: https://github.com/openlawlibrary/upgrade-python-package/pull/46
+[#49]: https://github.com/openlawlibrary/upgrade-python-package/pull/49
+[#50]: https://github.com/openlawlibrary/upgrade-python-package/pull/50
+[#52]: https://github.com/openlawlibrary/upgrade-python-package/pull/52
 
 ## [0.9.5]
 
@@ -298,7 +318,8 @@ and this project adheres to a _modified_ form of _[Semantic Versioning][semver]_
 [#5]: https://github.com/openlawlibrary/upgrade-python-package/pull/5
 [#6]: https://github.com/openlawlibrary/upgrade-python-package/pull/6
 
-[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.5...HEAD
+[Unreleased]:  https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/openlawlibrary/upgrade-python-package/compare/v0.9.2...v0.9.3

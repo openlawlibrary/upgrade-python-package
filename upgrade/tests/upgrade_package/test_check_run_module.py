@@ -56,3 +56,8 @@ def test_try_running_module_where_another_package_is_not_a_module_expect_error(c
     expected = "No module named oll"
     actual = out
     assert expected in actual
+
+
+def test_try_running_module_where_module_is_missing_expect_false():
+    cut = try_running_module
+    assert cut("missing_probe") is False
