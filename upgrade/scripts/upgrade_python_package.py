@@ -538,9 +538,8 @@ def run_initial_post_install(package_name, *args):
     if run_post_install:
         logging.debug("Running initial post install of package %s", package_name)
         module_name = package_name.replace("-", "_")
-        try_running_module(module_name, *args)
-        # delete the file to avoid running post install again
-        os.remove(file_path)
+        if try_running_module(module_name, *args):
+            os.remove(file_path)
 
 
 def run_module_and_reload_uwsgi_app(module_name, *args):
@@ -598,9 +597,10 @@ def try_running_module(wheel, *args, **kwargs):
                     slack_webhook_url,
                 )
             raise
-    else:
-        logging.warning("No module named %s", module_name)
-        print(f"No module named {module_name}")
+        return True
+    logging.warning("No module named %s", module_name)
+    print(f"No module named {module_name}")
+    return False
 
 
 parser = argparse.ArgumentParser()
