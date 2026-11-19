@@ -30,3 +30,18 @@ def test_upgrade_python_package_where_package_has_extra_expect_initial_post_inst
 
     assert marker.exists()
     assert not flag.exists()
+
+
+def test_upgrade_python_package_where_module_is_missing_expect_flag_kept(
+    tmp_path, monkeypatch
+):
+    flag_dir = tmp_path / "flags"
+    flag_dir.mkdir()
+    flag = flag_dir / "missing_probe_run_post_install"
+    flag.touch()
+    monkeypatch.setattr(upp, "POST_INSTALL_FLAG_DIR", str(flag_dir))
+
+    cut = upp.upgrade_python_package
+    cut("missing-probe", should_run_initial_post_install=True, test=True)
+
+    assert flag.exists()
